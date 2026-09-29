@@ -18,6 +18,7 @@ next-env.d.ts
 # env files (only the example is committed)
 .env*
 !.env.example
+!.env.docker.example
 
 # supabase local
 supabase/.branches

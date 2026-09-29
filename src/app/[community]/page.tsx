@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { cookies } from "next/headers";
 import { Clock, MapPin, Megaphone, Phone } from "lucide-react";
 import { getCommunityOr404, t } from "@/lib/community";
@@ -20,7 +21,7 @@ export default async function Landing({ params }: { params: Promise<{ community:
       <header className="border-b border-line bg-surface">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-3">
-            {c.branding?.logo_url && <img src={c.branding.logo_url} alt="" className="size-12 rounded-xl" />}
+            {c.branding?.logo_url && <Image src={c.branding.logo_url} alt="" width={48} height={48} className="size-12 rounded-xl object-contain" />}
             <span className="text-xl font-bold">{c.name}</span>
           </div>
           <QuickControls languages={c.enabled_languages} current={lang} />

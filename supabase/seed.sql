@@ -276,7 +276,7 @@ begin
     end if;
   end loop;
 
-  -- Yearly insurance (paid), ad-hoc repairs, one disputed, one large awaiting a 2nd approval, one overdue.
+  -- Yearly insurance (paid), ad-hoc repairs, one disputed, one large awaiting two approvals, one overdue.
   insert into public.invoices (community_id, supplier_id, contract_id, category_id, invoice_number, issue_date, due_date, net_cents, vat_cents, status, paid_date, notes, created_by)
   values (oc, (sup ->> 'insurance')::uuid, (con ->> 'insurance')::uuid, (cats ->> 'Insurance')::uuid, 'POL-2026-0042', current_date - 215, current_date - 185, 480000, 0, 'paid', current_date - 190, 'Annual premium', treasurer_id)
   returning id into inv_id;
@@ -293,9 +293,7 @@ begin
   insert into public.invoice_approvals (community_id, invoice_id, approver_id) values (oc, inv_id, treasurer_id);
 
   insert into public.invoices (community_id, supplier_id, category_id, invoice_number, issue_date, due_date, net_cents, vat_cents, status, notes, created_by)
-  values (oc, (sup ->> 'repairs')::uuid, (cats ->> 'Repairs & maintenance')::uuid, 'RR-1229', current_date - 20, current_date + 10, 324000, 68040, 'received', 'Roof waterproofing Block C – needs two approvals', treasurer_id)
-  returning id into inv_id;
-  insert into public.invoice_approvals (community_id, invoice_id, approver_id) values (oc, inv_id, treasurer_id);
+  values (oc, (sup ->> 'repairs')::uuid, (cats ->> 'Repairs & maintenance')::uuid, 'RR-1229', current_date - 20, current_date + 10, 324000, 68040, 'received', 'Roof waterproofing Block C – needs two approvals', treasurer_id);
 
   insert into public.invoices (community_id, supplier_id, category_id, invoice_number, issue_date, due_date, net_cents, vat_cents, status, notes, created_by)
   values (oc, (sup ->> 'cleaning')::uuid, (cats ->> 'Cleaning')::uuid, 'LM-EXTRA-77', current_date - 50, current_date - 20, 38000, 7980, 'disputed', 'Extra cleaning charged but not agreed', treasurer_id);

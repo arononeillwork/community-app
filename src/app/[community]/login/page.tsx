@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { getCommunityOr404 } from "@/lib/community";
 import LoginForms from "./LoginForms";
@@ -19,7 +20,7 @@ export default async function LoginPage({ params, searchParams }: {
       style={{ background: "linear-gradient(160deg, var(--brand-soft), var(--bg))" }}>
       <div className="card w-full max-w-md rounded-card border border-line bg-surface p-6 sm:p-8">
         <div className="mb-6 flex flex-col items-center gap-3 text-center">
-          {c.branding?.logo_url && <img src={c.branding.logo_url} alt="" className="size-16 rounded-2xl" />}
+          {c.branding?.logo_url && <Image src={c.branding.logo_url} alt="" width={64} height={64} className="size-16 rounded-2xl object-contain" />}
           <h1 className="text-2xl font-bold">Sign in to {c.name}</h1>
         </div>
         <LoginForms slug={c.slug} initialError={initialError} />

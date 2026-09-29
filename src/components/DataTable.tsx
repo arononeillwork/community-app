@@ -76,6 +76,11 @@ function inRange(value: unknown, range: string) {
   }
 }
 
+/** Dropdown filter test. A tags column matches when any of its items equals the chosen value. */
+function matches(v: unknown, want: string) {
+  return Array.isArray(v) ? v.map(String).includes(want) : String(v ?? "") === want;
+}
+
 function label(v: unknown): string {
   if (v == null || v === "") return "—";
   const s = String(v);
@@ -119,7 +124,7 @@ export default function DataTable({
 
   // Pre-filter by dropdowns and date range; TanStack handles search, sort and paging.
   const filtered = useMemo(
-    () => rows.filter((r) => Object.entries(active).every(([k, v]) => String(r[k] ?? "") === v) && (!dateKey || inRange(r[dateKey], range))),
+    () => rows.filter((r) => Object.entries(active).every(([k, v]) => matches(r[k], v)) && (!dateKey || inRange(r[dateKey], range))),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [rows, JSON.stringify(active), range, dateKey],
   );
@@ -132,7 +137,8 @@ export default function DataTable({
   const colDefs = useMemo<ColumnDef<Row>[]>(
     () => columns.map((c) => ({
       id: c.key,
-      accessorFn: (r) => r[c.key] as unknown,
+      // Arrays sort by their joined text (TanStack treats arrays as "").
+      accessorFn: (r) => { const v = r[c.key]; return c.type === "tags" && Array.isArray(v) ? v.join(", ") : (v as unknown); },
       header: c.header,
       sortingFn: c.type === "money" || c.type === "number" || c.type === "percent" ? "basic" : c.type === "date" ? "datetime" : "alphanumeric",
       sortUndefined: "last",
@@ -238,7 +244,8 @@ export default function DataTable({
           </div>
         </div>
         {filterCols.map((c) => {
-          const values = Array.from(new Set(rows.map((r) => r[c.key]).filter((v) => v != null && v !== "").map(String))).sort();
+          const values = Array.from(new Set(rows.flatMap((r) => (Array.isArray(r[c.key]) ? (r[c.key] as unknown[]) : [r[c.key]]))
+            .filter((v) => v != null && v !== "").map(String))).sort();
           return (
             <div key={c.key} className="field min-w-[11rem]">
               <label htmlFor={`${id}f_${c.key}`}>{c.header}</label>

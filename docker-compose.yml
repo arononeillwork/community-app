@@ -1,0 +1,57 @@
+# Runs the Next.js app in Docker next to the local Supabase stack.
+#
+#   npm run docker:up     starts Supabase (Supabase CLI) + builds and starts "web"
+#   npm run docker:down   stops "web" (Supabase keeps running: npm run db:stop)
+#
+# Supabase itself is NOT defined here: the Supabase CLI runs it as its own set
+# of containers (supabase_*_community-app) and publishes it on the host at
+# http://127.0.0.1:54321 (API), 54322 (Postgres) and 54324 (Mailpit).
+#
+# Why host networking?
+#   The browser and the Next.js server must reach Supabase at the SAME URL,
+#   because the login cookie is named after the Supabase URL host
+#   (sb-<host>-auth-token). With network_mode: host the container shares the
+#   host's network, so http://127.0.0.1:54321 works for both, and the app is
+#   served on http://localhost:3000 without a port mapping.
+#
+# macOS / Windows (Docker Desktop):
+#   Host networking needs Docker Desktop 4.34 or newer with
+#   Settings > Resources > Network > "Enable host networking" switched on
+#   (then restart Docker Desktop). If you can't enable it, run the app outside
+#   Docker instead:  npm run db:start  and  npm run dev
+#
+# Settings come from .env.docker (copy .env.docker.example; docker:up does it).
+# The build args need it too, so run compose with:  --env-file .env.docker
+# (npm run docker:up does this). The defaults below match the local CLI stack.
+
+name: community-app
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Inlined into the app at build time (NEXT_PUBLIC_*): rebuild after changing.
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-http://127.0.0.1:54321}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+    image: community-app-web:local
+    network_mode: host
+    env_file:
+      - .env.docker
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/').then(r => process.exit(r.status < 500 ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s

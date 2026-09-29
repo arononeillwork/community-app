@@ -7,6 +7,7 @@ import { requireMember } from "@/lib/community";
 import { createClient } from "@/lib/supabase/server";
 import { WEEKDAYS, dateTime } from "@/lib/format";
 import { Card } from "@/components/ui";
+import { isEveryDay, weekdayIn } from "@/components/info/labels";
 
 export const metadata = { title: "Home" };
 
@@ -16,13 +17,14 @@ export default async function HomePage({ params }: { params: Promise<{ community
   const supabase = await createClient();
   const base = `/${s.community.slug}`;
 
-  const tomorrow = new Date(Date.now() + 86400000);
+  // "Tomorrow" in the community's own time zone, not the server's.
+  const tomorrow = weekdayIn(s.community.timezone, 1);
   const [{ data: bins }, { data: nextMeeting }] = await Promise.all([
     supabase.from("bin_schedules").select("bin_type, color, color_hex, weekdays").eq("community_id", s.community.id).order("sort"),
     supabase.from("meetings").select("id, title, starts_at, location, meeting_url").eq("community_id", s.community.id)
       .eq("status", "scheduled").gte("starts_at", new Date().toISOString()).order("starts_at").limit(1).maybeSingle(),
   ]);
-  const binsTomorrow = (bins ?? []).filter((b) => b.weekdays.includes(tomorrow.getDay()) && b.weekdays.length < 7);
+  const binsTomorrow = (bins ?? []).filter((b) => (b.weekdays ?? []).includes(tomorrow));
 
   const tiles = [
     { href: `${base}/ask`, label: "Ask a question", icon: MessageCircleQuestion, big: true },
@@ -48,18 +50,18 @@ export default async function HomePage({ params }: { params: Promise<{ community
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card className="!bg-brand-soft">
-          <h2 className="mb-2 flex items-center gap-2 text-xl font-bold"><Trash2 aria-hidden className="size-6" /> Bins tomorrow ({WEEKDAYS[tomorrow.getDay()]})</h2>
-          <ul className="flex flex-wrap gap-2">
-            <li className="flex items-center gap-2 rounded-full bg-surface px-3 py-1 font-bold">
-              <span className="size-4 rounded-full" style={{ background: "#6b7280" }} aria-hidden /> General waste
-            </li>
-            {binsTomorrow.map((b) => (
-              <li key={b.bin_type} className="flex items-center gap-2 rounded-full bg-surface px-3 py-1 font-bold">
-                <span className="size-4 rounded-full border border-line-strong" style={{ background: b.color_hex }} aria-hidden />
-                {b.bin_type} <span className="font-normal text-muted">({b.color})</span>
-              </li>
-            ))}
-          </ul>
+          <h2 className="mb-2 flex items-center gap-2 text-xl font-bold"><Trash2 aria-hidden className="size-6" /> Bins tomorrow ({WEEKDAYS[tomorrow]})</h2>
+          {binsTomorrow.length === 0 ? <p>No bin collections tomorrow.</p> : (
+            <ul className="flex flex-wrap gap-2">
+              {binsTomorrow.map((b) => (
+                <li key={b.bin_type} className="flex items-center gap-2 rounded-full bg-surface px-3 py-1 font-bold">
+                  <span className="size-4 rounded-full border border-line-strong" style={{ background: b.color_hex }} aria-hidden />
+                  {b.bin_type} <span className="font-normal text-muted">({b.color}{isEveryDay(b) ? ", every day" : ""})</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Link href={`${base}/info#bins`} className="mt-3 inline-flex min-h-12 items-center font-bold text-brand underline">See the whole week</Link>
         </Card>
         <Card className="!bg-brand-soft">
           <h2 className="mb-2 flex items-center gap-2 text-xl font-bold"><CalendarDays aria-hidden className="size-6" /> Next meeting</h2>

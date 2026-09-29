@@ -6,7 +6,19 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "setup": "bash scripts/setup.sh",
+    "db:start": "bash scripts/db-start.sh",
+    "db:start:full": "bash scripts/db-start.sh --full",
+    "db:stop": "npx supabase stop",
+    "db:status": "npx supabase status",
+    "db:reset": "npx supabase db reset",
+    "db:test": "bash scripts/db-test.sh",
+    "test:smoke": "node scripts/smoke.mjs",
+    "typecheck": "tsc --noEmit",
+    "docker:up": "bash scripts/docker-up.sh",
+    "docker:down": "docker compose down",
+    "check": "npm run typecheck && npm run lint && npm run db:test"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -27,6 +39,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.5.26",
+    "playwright-core": "^1.63.0",
     "supabase": "^2.118.0",
     "tailwindcss": "^4",
     "typescript": "^5"

@@ -111,12 +111,16 @@ export const STATUS_TONES: Record<string, Tone> = {
   low: "neutral", normal: "info", high: "warn", urgent: "bad",
   incident: "bad", complaint: "info",
   overdue: "bad", due_soon: "warn", ok: "ok",
+  rolling: "info", on_track: "ok", near_limit: "warn", over: "bad", inactive: "neutral", draft: "neutral",
+  not_due_yet: "info",
 };
 
 export const STATUS_LABELS: Record<string, string> = {
   in_progress: "In progress", on_agenda: "On agenda", not_attending: "Not attending",
   long_term: "Long-term", short_term: "Short-term", holiday_let: "Holiday let", common_area: "Common area",
   due_soon: "Due soon", agm: "AGM",
+  received: "Awaiting approval", ok: "OK", on_track: "On track", near_limit: "Near limit", over: "Over budget",
+  one_off: "One-off", not_due_yet: "Not due yet",
 };
 
 export function StatusBadge({ value }: { value: string | null | undefined }) {

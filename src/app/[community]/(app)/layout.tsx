@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Bell, Home, Settings } from "lucide-react";
 import { requireMember } from "@/lib/community";
@@ -19,6 +20,9 @@ export default async function AppLayout({ children, params }: { children: React.
     { href: `${base}/meetings`, label: "Meetings" },
     { href: `${base}/info`, label: "Bins & info" },
     { href: `${base}/contacts`, label: "Contacts" },
+    { href: `${base}/documents`, label: "Documents" },
+    { href: `${base}/local`, label: "Local area" },
+    { href: `${base}/money`, label: "Money" },
     ...(s.isOwner ? [{ href: `${base}/my-units`, label: "My flat" }] : []),
     ...(s.isFinance ? [{ href: `${base}/finance`, label: "Finance" }] : []),
     ...(s.isAdmin ? [{ href: `${base}/admin`, label: "Admin" }] : []),
@@ -32,7 +36,7 @@ export default async function AppLayout({ children, params }: { children: React.
       <header className="sticky top-0 z-30 border-b border-line bg-surface/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2">
           <Link href={`${base}/home`} className="flex items-center gap-3 no-underline text-ink">
-            {s.community.branding?.logo_url && <img src={s.community.branding.logo_url} alt="" className="size-10 rounded-xl" />}
+            {s.community.branding?.logo_url && <Image src={s.community.branding.logo_url} alt="" width={40} height={40} className="size-10 rounded-xl object-contain" />}
             <span className="text-lg font-bold">{s.community.name}</span>
           </Link>
           <div className="flex items-center gap-1">

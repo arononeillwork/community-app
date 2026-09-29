@@ -100,7 +100,10 @@ export default function ReportForm({ slug, categories, units }: { slug: string; 
           <>
             <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {previews.map((p) => (
-                <li key={p.url}><img src={p.url} alt={`Photo: ${p.name}`} className="aspect-square w-full rounded-xl object-cover" /></li>
+                <li key={p.url}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- blob: preview of a file picked in the browser; next/image cannot load blob URLs */}
+                  <img src={p.url} alt={`Photo: ${p.name}`} className="aspect-square w-full rounded-xl object-cover" />
+                </li>
               ))}
             </ul>
             <button type="button" onClick={clearPhotos} className="inline-flex w-fit items-center gap-1 font-bold text-bad underline"><X className="size-4" aria-hidden /> Remove photos</button>

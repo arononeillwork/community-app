@@ -57,6 +57,7 @@ export default async function ReportDetail({ params, searchParams }: {
               {photos.map((p, i) => p.signedUrl && (
                 <li key={p.path ?? i}>
                   <a href={p.signedUrl} target="_blank" rel="noopener noreferrer">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- resident photo of unknown size behind a short-lived signed URL; images are unoptimized app-wide (next.config), so next/image adds nothing here */}
                     <img src={p.signedUrl} alt={`Photo ${i + 1} of the problem`} className="aspect-square w-full rounded-xl border border-line object-cover" />
                   </a>
                 </li>
