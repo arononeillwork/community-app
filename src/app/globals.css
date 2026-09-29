@@ -1,0 +1,116 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Design tokens. --brand / --brand-ink are overridden per community (white-label).
+   Base font-size is set on <html> from the user's text-size preference.
+   --------------------------------------------------------------------------- */
+:root {
+  --brand: #0f766e;
+  --brand-ink: #ffffff;
+  --brand-soft: color-mix(in srgb, var(--brand) 10%, white);
+  --accent: #d97706;
+  --bg: #f7f8f9;
+  --surface: #ffffff;
+  --ink: #1b1f24;
+  --muted: #4b5563;
+  --line: #d9dde3;
+  --line-strong: #9aa3ae;
+  --ok: #15803d;
+  --ok-soft: #dcfce7;
+  --warn: #a16207;
+  --warn-soft: #fef3c7;
+  --bad: #b91c1c;
+  --bad-soft: #fee2e2;
+  --info: #1d4ed8;
+  --info-soft: #dbeafe;
+  --focus: #1d4ed8;
+  --radius: 14px;
+}
+
+html.hc {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --ink: #000000;
+  --muted: #1f1f1f;
+  --line: #000000;
+  --line-strong: #000000;
+  --brand-soft: #ffffff;
+  --focus: #000000;
+}
+
+@theme inline {
+  --color-brand: var(--brand);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-soft: var(--brand-soft);
+  --color-accent: var(--accent);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --font-sans: var(--font-main), system-ui, sans-serif;
+  --radius-card: var(--radius);
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-main), system-ui, sans-serif;
+  font-size: 1.125rem; /* 18px at 100 % */
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+html.dys body {
+  font-family: var(--font-dys), system-ui, sans-serif;
+  letter-spacing: 0.03em;
+  word-spacing: 0.08em;
+}
+
+html.hc a { text-decoration: underline; }
+html.hc .card, html.hc table, html.hc input, html.hc select, html.hc textarea, html.hc button { border-width: 2px !important; }
+
+html.rm *, html.rm *::before, html.rm *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* Form controls: large and clear */
+.field { display: flex; flex-direction: column; gap: 0.4rem; }
+.field > label, .label { font-weight: 600; }
+.input {
+  min-height: 3rem;
+  padding: 0.6rem 0.9rem;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 1rem;
+  width: 100%;
+}
+textarea.input { min-height: 7rem; }
+.hint { color: var(--muted); font-size: 0.9rem; }
+
+@media print {
+  header, nav, .no-print { display: none !important; }
+  body { background: white; font-size: 11pt; }
+  .card { border: none !important; box-shadow: none !important; }
+}
