@@ -10,6 +10,7 @@ import FinanceToolbar from "@/components/finance/FinanceToolbar";
 import MonthlySpendChart from "@/components/finance/MonthlySpendChart";
 import BudgetBars, { type BudgetRow } from "@/components/finance/BudgetBars";
 import { requiredApprovals } from "@/components/finance/invoice";
+import { isOverdue } from "@/components/finance/dates";
 
 export const metadata = { title: "Finance" };
 
@@ -58,7 +59,9 @@ export default async function FinanceOverview({ params }: { params: Promise<{ co
       .eq("community_id", c).eq("year", year),
     supabase.from("v_invoice_list").select("id, invoice_number, supplier_name, total_cents, status, due_date, approvals, overdue")
       .eq("community_id", c).in("status", ["received", "approved"]).order("due_date", { ascending: true, nullsFirst: false }),
-    supabase.from("invoice_approvals").select("invoice_id").eq("community_id", c).eq("approver_id", s.userId),
+    // Only this person's approvals of invoices still waiting (all their approvals ever could pass the row limit).
+    supabase.from("invoice_approvals").select("invoice_id, invoice:invoices!inner(status)")
+      .eq("community_id", c).eq("approver_id", s.userId).eq("invoice.status", "received"),
     supabase.from("v_contract_key_dates").select("id, title, supplier_name, end_date, notice_deadline, days_to_end, days_to_notice, auto_renew")
       .eq("community_id", c).eq("status", "active"),
     supabase.from("v_unit_balance").select("unit_id, label, overdue_cents").eq("community_id", c).gt("overdue_cents", 0),
@@ -90,7 +93,8 @@ export default async function FinanceOverview({ params }: { params: Promise<{ co
 
   // Invoices
   const threshold = s.community.settings?.invoice_approval_threshold_cents;
-  const openInvoices = (open ?? []) as OpenInvoice[];
+  // Overdue by the community's calendar, not the database server's.
+  const openInvoices = ((open ?? []) as OpenInvoice[]).map((i) => ({ ...i, overdue: isOverdue(i.status, i.due_date, today) }));
   const approvedByMe = new Set((mine ?? []).map((a) => a.invoice_id));
   const awaiting = openInvoices.filter((i) => i.status === "received");
   const toApprove = awaiting.filter((i) => !approvedByMe.has(i.id));
@@ -141,21 +145,37 @@ export default async function FinanceOverview({ params }: { params: Promise<{ co
           sub={arrearsFlats > 0 ? `${arrearsFlats} ${arrearsFlats === 1 ? "flat is" : "flats are"} behind` : "All flats are up to date"} />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
-        <Card className="lg:col-span-3">
-          <SectionHeader icon={Scale} title="Budget against spending" description={budgetRows.length ? `${year} budget, by category` : undefined}
-            action={<Button href={`${base}/budget`} variant="ghost" size="sm">Budget</Button>} />
-          {budgetRows.length ? (
-            <BudgetBars rows={budgetRows} yearShare={Math.min(1, yearShare)} currency={cur} />
-          ) : (
-            <div className="rounded-xl bg-surface-2 px-4 py-6 text-center">
-              <p className="text-[0.9375rem] text-muted">There is no budget for {year} yet. Add one to compare spending by category.</p>
-              <div className="mt-3"><Button href={`${base}/budget`} variant="secondary" size="sm">Set up the budget</Button></div>
-            </div>
-          )}
-        </Card>
+      {/* Phones: what needs doing comes first. Wide screens: budget and monthly spending on the left, the to-do list on the right. */}
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-5">
+        <div className="flex min-w-0 flex-col gap-4 lg:col-span-3">
+          <Card>
+            <SectionHeader icon={Scale} title="Budget against spending" description={budgetRows.length ? `${year} budget, by category` : undefined}
+              action={<Button href={`${base}/budget`} variant="ghost" size="sm">Budget</Button>} />
+            {budgetRows.length ? (
+              <BudgetBars rows={budgetRows} yearShare={Math.min(1, yearShare)} currency={cur} />
+            ) : (
+              <div className="rounded-xl bg-surface-2 px-4 py-6 text-center">
+                <p className="text-[0.9375rem] text-muted">There is no budget for {year} yet. Add one to compare spending by category.</p>
+                <div className="mt-3"><Button href={`${base}/budget`} variant="secondary" size="sm">Set up the budget</Button></div>
+              </div>
+            )}
+          </Card>
 
-        <Card className="lg:col-span-2" padded={false}>
+          <Card>
+            <SectionHeader icon={BarChart3} title="Spending by month"
+              description={<>Last 12 months · <span className="tabular text-ink-2">{money(last12, cur)}</span> in total</>}
+              action={<Button href={`${base}/invoices`} variant="ghost" size="sm">Invoices</Button>} />
+            {last12 > 0 ? (
+              <MonthlySpendChart months={monthly} currency={cur} currentMonth={currentMonth} />
+            ) : (
+              <p className="rounded-xl bg-surface-2 px-4 py-6 text-center text-[0.9375rem] text-muted">
+                No invoices in the last 12 months. Add invoices to see spending month by month.
+              </p>
+            )}
+          </Card>
+        </div>
+
+        <Card className="order-first lg:order-none lg:col-span-2" padded={false}>
           <div className="p-5 pb-2 sm:p-6 sm:pb-2">
             <SectionHeader icon={CheckCircle2} title="Needs your attention"
               description={attention ? `${attention} ${attention === 1 ? "item" : "items"}` : undefined} className="!mb-0" />
@@ -205,19 +225,6 @@ export default async function FinanceOverview({ params }: { params: Promise<{ co
           )}
         </Card>
       </div>
-
-      <Card>
-        <SectionHeader icon={BarChart3} title="Spending by month"
-          description={<>Last 12 months · <span className="tabular text-ink-2">{money(last12, cur)}</span> in total</>}
-          action={<Button href={`${base}/invoices`} variant="ghost" size="sm">Invoices</Button>} />
-        {last12 > 0 ? (
-          <MonthlySpendChart months={monthly} currency={cur} currentMonth={currentMonth} />
-        ) : (
-          <p className="rounded-xl bg-surface-2 px-4 py-6 text-center text-[0.9375rem] text-muted">
-            No invoices in the last 12 months. Add invoices to see spending month by month.
-          </p>
-        )}
-      </Card>
     </div>
   );
 }

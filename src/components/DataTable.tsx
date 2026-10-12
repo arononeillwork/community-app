@@ -56,6 +56,8 @@ type Props = {
   empty?: string;
   /** Distinguish multiple tables on one page. */
   id?: string;
+  /** Time zone for timestamp date columns (pass the community's). Date-only values are shown as written. */
+  timeZone?: string;
 };
 
 const RANGES: { value: string; label: string }[] = [
@@ -90,7 +92,7 @@ function label(v: unknown): string {
 
 export default function DataTable({
   rows, columns, dateKey, currency = "EUR", searchPlaceholder = "Search…", defaultSort, views = [],
-  exportName = "export", empty = "Nothing to show yet.", id = "",
+  exportName = "export", empty = "Nothing to show yet.", id = "", timeZone = "UTC",
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -108,10 +110,13 @@ export default function DataTable({
   const active: Record<string, string> = Object.fromEntries(filterCols.map((c) => [c.key, p(`f_${c.key}`)]).filter(([, v]) => v));
 
   const fmtMoney = useMemo(() => new Intl.NumberFormat("en-GB", { style: "currency", currency }), [currency]);
+  // Same output on the server and in the browser: date-only values as written, timestamps in the given zone.
   const fmtDate = (v: unknown) => {
     if (!v) return "—";
     const s = String(v);
-    return new Date(s.length === 10 ? `${s}T00:00:00` : s).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+    const dateOnly = s.length === 10;
+    return new Date(dateOnly ? `${s}T00:00:00Z` : s)
+      .toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: dateOnly ? "UTC" : timeZone });
   };
 
   function update(next: Record<string, string | null>) {
@@ -329,7 +334,7 @@ export default function DataTable({
                   {pageRows.map((row) => (
                     <tr key={row.id} className="border-b border-line transition-colors last:border-0 hover:bg-surface-2/70">
                       {shown.map((c) => (
-                        <td key={c.key} className={clsx("px-4 py-3 align-top text-[0.9375rem] text-ink-2", c.primary && "min-w-[13rem]", c.nowrap && "whitespace-nowrap", isNum(c) && "tabular whitespace-nowrap text-right", c.type === "date" && "whitespace-nowrap")}>
+                        <td key={c.key} className={clsx("px-4 py-3 align-top text-[0.9375rem] text-ink-2", c.primary && "min-w-[10rem]", c.nowrap && "whitespace-nowrap", isNum(c) && "tabular whitespace-nowrap text-right", c.type === "date" && "whitespace-nowrap")}>
                           {renderCell(c, row.original)}
                         </td>
                       ))}

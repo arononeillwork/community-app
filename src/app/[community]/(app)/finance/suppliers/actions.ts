@@ -39,7 +39,8 @@ async function parseSupplier(s: Session, form: FormData, current?: { id: string;
   if (phone && !PHONE.test(phone)) fields.phone = "Enter a phone number with digits, e.g. +34 952 100 001.";
   // The checksum is only checked when the IBAN is new or changed, so older records can still be edited.
   const ibanChanged = iban !== normaliseIban(current?.iban ?? "");
-  if (ibanAction === "change" && current && !iban) fields.iban = "Enter the new IBAN, or keep the current one.";
+  // Only ask for a replacement when there was one to replace: a supplier without an IBAN can still be saved without one.
+  if (ibanAction === "change" && current?.iban && !iban) fields.iban = "Enter the new IBAN, or keep the current one.";
   else if (iban && ibanChanged && !validIban(iban)) fields.iban = "This IBAN does not look right. Check each character against the supplier's bank details.";
 
   if (!fields.name) {

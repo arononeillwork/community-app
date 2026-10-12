@@ -71,7 +71,7 @@ export default function SupplierForm({ action, slug, initial = {}, serviceTypes,
             </div>
             <div className="field">
               <label htmlFor="tax_id">Tax ID (CIF/NIF) <span className="font-normal text-muted">· optional</span></label>
-              <input id="tax_id" name="tax_id" className="input uppercase" maxLength={20} defaultValue={initial.tax_id ?? ""}
+              <input id="tax_id" name="tax_id" className="input uppercase placeholder:normal-case" maxLength={20} defaultValue={initial.tax_id ?? ""}
                 placeholder="e.g. B29000010" autoComplete="off" {...err("tax_id")} />
               <FieldError id="tax_id-error" msg={fields.tax_id} />
             </div>

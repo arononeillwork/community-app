@@ -45,7 +45,7 @@ select pg_temp.check((select count(*) from documents where visibility <> 'all') 
 select pg_temp.check((select count(*) from storage.objects where name like '%/test-all.pdf') = 1, 'tenant can open the file of a document for everyone');
 select pg_temp.check((select count(*) from storage.objects where name like '%/test-owners.pdf') = 0, 'tenant cannot open the file of an owners-only document');
 select pg_temp.check((select count(*) from storage.objects where name like '%/test-admins.pdf') = 0, 'tenant cannot open the file of an admins-only document');
-select pg_temp.check((select count(*) from storage.objects where name like '%/test-loose.pdf') = 1, 'tenant can open a community file that no document restricts');
+select pg_temp.check((select count(*) from storage.objects where name like '%/test-loose.pdf') = 0, 'tenant cannot open or list a file no document points to (upload in progress or orphan)');
 select pg_temp.check((select count(*) from document_translations t join documents d on d.id = t.document_id where d.visibility <> 'all') = 0,
   'tenant sees no translations of restricted documents');
 rollback;
@@ -57,6 +57,7 @@ select pg_temp.check((select count(*) from documents where visibility = 'owners'
 select pg_temp.check((select count(*) from documents where visibility = 'admins') = 0, 'owner does not see admins-only documents');
 select pg_temp.check((select count(*) from storage.objects where name like '%/test-owners.pdf') = 1, 'owner can open the file of an owners-only document');
 select pg_temp.check((select count(*) from storage.objects where name like '%/test-admins.pdf') = 0, 'owner cannot open the file of an admins-only document');
+select pg_temp.check((select count(*) from storage.objects where name like '%/test-loose.pdf') = 0, 'owner cannot open a file no document points to');
 select pg_temp.check((select count(*) from document_translations t join documents d on d.id = t.document_id where d.title = 'Insurance policy summary') = 1,
   'owner sees the translation of an owners-only document');
 rollback;
@@ -66,6 +67,7 @@ select pg_temp.seed_files();
 select pg_temp.login('treasurer@oceanagardens.test');
 select pg_temp.check((select count(*) from documents where visibility = 'admins') >= 1, 'treasurer sees admins-only documents');
 select pg_temp.check((select count(*) from storage.objects where name like '%/test-admins.pdf') = 1, 'treasurer can open the file of an admins-only document');
+select pg_temp.check((select count(*) from storage.objects where name like '%/test-loose.pdf') = 0, 'treasurer cannot open a file no document points to');
 do $$ begin
   delete from storage.objects where bucket_id = 'documents' and name like '%/test-all.pdf';
   if found then raise exception 'FAIL: treasurer deleted a document file'; end if;

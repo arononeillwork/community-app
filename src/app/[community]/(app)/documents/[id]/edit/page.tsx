@@ -38,18 +38,20 @@ export default async function EditDocumentPage({ params, searchParams }: {
   const notice = sp.translation ? `${sp.translation} translation saved.` : sp.removed ? `${sp.removed} translation removed.` : undefined;
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-5">
+    <div className="mx-auto max-w-2xl">
       <PageHeader title="Edit document" intro={d.title} back={{ href: `/${s.community.slug}/documents/${d.id}`, label: "Back to the document" }} />
-      <DocumentForm slug={s.community.slug} id={d.id} folders={folders} languages={languages}
-        currentFile={d.storage_path ? { kind: fileKind(d.mime_type, d.storage_path).label, size: formatBytes(d.size_bytes) } : null}
-        initial={{
-          title: d.title, folder: d.folder, new_folder: "", description: d.description ?? "", visibility: d.visibility,
-          original_language: d.original_language, extracted_text: d.extracted_text ?? "",
-        }} />
-      <Translations slug={s.community.slug} documentId={d.id} originalName={languageLabel(d.original_language)} rows={rows} missing={missing} notice={notice} />
-      <ConfirmDelete action={deleteDocument.bind(null, s.community.slug, d.id)} title="Delete document"
-        description={d.storage_path ? "The file and its translations are deleted too." : "Its translations are deleted too."}
-        label="Delete document" question={`Delete “${d.title}”? This cannot be undone.`} />
+      <div className="flex flex-col gap-5">
+        <DocumentForm slug={s.community.slug} id={d.id} folders={folders} languages={languages}
+          currentFile={d.storage_path ? { kind: fileKind(d.mime_type, d.storage_path).label, size: formatBytes(d.size_bytes) } : null}
+          initial={{
+            title: d.title, folder: d.folder, new_folder: "", description: d.description ?? "", visibility: d.visibility,
+            original_language: d.original_language, extracted_text: d.extracted_text ?? "",
+          }} />
+        <Translations slug={s.community.slug} documentId={d.id} originalName={languageLabel(d.original_language)} rows={rows} missing={missing} notice={notice} />
+        <ConfirmDelete action={deleteDocument.bind(null, s.community.slug, d.id)} title="Delete document"
+          description={d.storage_path ? "The file and its translations are deleted too." : "Its translations are deleted too."}
+          label="Delete document" question={`Delete “${d.title}”? This cannot be undone.`} />
+      </div>
     </div>
   );
 }

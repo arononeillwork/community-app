@@ -51,6 +51,7 @@ export default function MonthlySpendChart({ months, currency = "EUR", currentMon
                 <li key={m.month} className="group relative flex h-full flex-1 items-end justify-center px-[2px]">
                   <span
                     tabIndex={0}
+                    role="img"
                     title={label}
                     aria-label={label}
                     className={clsx(

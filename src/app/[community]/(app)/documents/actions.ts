@@ -28,8 +28,11 @@ type Checked = {
   fields: Partial<Record<DocField, string>>;
 };
 
-/** Read and check the document form. The file is optional here; callers decide when one is required. */
-function readDocument(form: FormData, s: Session): Checked {
+/**
+ * Read and check the document form. The file is optional here; callers decide when one is required.
+ * `keepLanguage` is the document's current language, still accepted if the community has since switched it off.
+ */
+function readDocument(form: FormData, s: Session, keepLanguage?: string): Checked {
   const title = oneLine(text(form, "title"));
   const folderChoice = text(form, "folder");
   const folder = oneLine(folderChoice === NEW_FOLDER ? text(form, "new_folder") : folderChoice);
@@ -47,7 +50,7 @@ function readDocument(form: FormData, s: Session): Checked {
   if (description && description.length > 200) f.description = "Keep it to one line, under 200 characters.";
   if (!(VISIBILITIES as string[]).includes(visibility)) f.visibility = "Choose who can see it.";
   const languages = s.community.enabled_languages?.length ? s.community.enabled_languages : [s.community.default_language];
-  if (!languages.includes(original_language)) f.original_language = "Choose the language it is written in.";
+  if (!languages.includes(original_language) && original_language !== keepLanguage) f.original_language = "Choose the language it is written in.";
   if (extracted_text && extracted_text.length > MAX_TEXT) f.extracted_text = "The text is too long. Keep it under 200,000 characters.";
   if (file) {
     const ext = fileExtension(file.name);
@@ -96,11 +99,11 @@ export async function updateDocument(slug: string, id: string, _prev: DocFormSta
   const s = await requireAdmin(slug);
   if (!UUID_RE.test(id)) return { error: "This document no longer exists. It may have been deleted." };
   const supabase = await createClient();
-  const { data: current } = await supabase.from("documents").select("id, storage_path")
+  const { data: current } = await supabase.from("documents").select("id, storage_path, original_language")
     .eq("id", id).eq("community_id", s.community.id).maybeSingle();
   if (!current) return { error: "This document no longer exists. It may have been deleted." };
 
-  const { row, file, fields } = readDocument(form, s);
+  const { row, file, fields } = readDocument(form, s, current.original_language);
   if (!file && !current.storage_path && !row.extracted_text && !fields.file) {
     fields.extracted_text = "Add the text, or choose a file, so residents have something to read.";
   }

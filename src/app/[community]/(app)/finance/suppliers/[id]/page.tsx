@@ -7,8 +7,8 @@ import { date, money, moneyShort, todayInput } from "@/lib/format";
 import { Badge, Button, Card, DefinitionList, Notice, SectionHeader, StatusBadge } from "@/components/ui";
 import { ContactActions, PhoneText } from "@/components/contact";
 import FinanceToolbar from "@/components/finance/FinanceToolbar";
-import { maskIban } from "@/components/finance/iban";
 import { fetchAll } from "@/components/finance/fetch-all";
+import { dayOf } from "@/components/finance/dates";
 import IbanReveal from "./IbanReveal";
 import { revealIban } from "../actions";
 
@@ -36,7 +36,10 @@ export default async function SupplierPage({ params, searchParams }: {
   const base = `/${s.community.slug}/finance`;
   const cur = s.community.currency;
 
-  const { data: sup } = await supabase.from("suppliers").select("*").eq("community_id", c).eq("id", id).maybeSingle();
+  // The full IBAN is never loaded here: the page gets the masked form and "Show" asks the server for the rest.
+  const { data: sup } = await supabase.from("suppliers")
+    .select("id, name, service_type, tax_id, contact_name, email, phone, website, address, notes, active, iban_masked")
+    .eq("community_id", c).eq("id", id).maybeSingle();
   if (!sup) notFound();
 
   const [{ data: supplierContracts }, invoices, { data: reports }] = await Promise.all([
@@ -95,7 +98,7 @@ export default async function SupplierPage({ params, searchParams }: {
             { label: "Tax ID", value: sup.tax_id ? <span className="tabular">{sup.tax_id}</span> : <span className="text-muted">Not recorded</span> },
             {
               label: "IBAN",
-              value: sup.iban ? <IbanReveal masked={maskIban(sup.iban)} reveal={revealIban.bind(null, s.community.slug, id)} />
+              value: sup.iban_masked ? <IbanReveal masked={sup.iban_masked} reveal={revealIban.bind(null, s.community.slug, id)} />
                 : <span className="text-muted">Not recorded. <Link href={`${base}/suppliers/${id}/edit`}>Add it</Link> before paying them.</span>,
             },
             ...(sup.notes ? [{ label: "Notes", value: <span className="whitespace-pre-line">{sup.notes}</span> }] : []),
@@ -209,7 +212,7 @@ export default async function SupplierPage({ params, searchParams }: {
                 <>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium">{r.title}</span>
-                    <span className="block text-sm text-muted">{date(r.created_at)}{r.resolved_at ? ` · resolved ${date(r.resolved_at)}` : ""}</span>
+                    <span className="block text-sm text-muted">{dayOf(r.created_at, s.community.timezone)}{r.resolved_at ? ` · resolved ${dayOf(r.resolved_at, s.community.timezone)}` : ""}</span>
                   </span>
                   <span className="flex flex-wrap justify-end gap-1.5">
                     {(r.priority === "high" || r.priority === "urgent") && <StatusBadge value={r.priority} />}

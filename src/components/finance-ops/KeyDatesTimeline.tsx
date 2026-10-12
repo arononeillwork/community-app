@@ -71,9 +71,9 @@ export function KeyDatesTimeline({ contracts, today, hrefBase }: { contracts: Ti
           return (
             <li key={c.id} className="grid gap-x-4 gap-y-1.5 py-3 sm:grid-cols-[minmax(0,14rem)_1fr] sm:items-center">
               <div className="min-w-0">
-                <Link href={`${hrefBase}/${c.id}`} className="line-clamp-2 font-medium leading-snug text-ink no-underline hover:underline">{c.title}</Link>
+                <Link href={`${hrefBase}/${c.id}`} title={c.title} className="line-clamp-2 font-medium leading-snug text-ink no-underline hover:underline">{c.title}</Link>
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
-                  <span className="truncate">{c.supplier}</span>
+                  <span className="truncate" title={c.supplier}>{c.supplier}</span>
                   {noticeUrgent && <Badge tone="bad">Notice {relativeDays(noticeDays!)}</Badge>}
                   {!noticeUrgent && endUrgent && <Badge tone="warn">{endWord} {relativeDays(endDays!)}</Badge>}
                 </div>

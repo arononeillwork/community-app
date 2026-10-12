@@ -274,11 +274,11 @@ export default async function MyUnitsPage({ params, searchParams }: {
         })}
 
         <section aria-labelledby="statement" className="mt-3">
-          <SectionHeader icon={ReceiptText} title={<span id="statement">Fee statement</span>}
+          <SectionHeader icon={ReceiptText} title={<span id="statement" className="scroll-mt-24">Fee statement</span>}
             description="Your community fees and payments. Export gives you a copy for your records." />
           <TabLinks label="Statement" tabs={[
-            { href: `${base}/my-units`, label: "Charges", active: statement === "charges", count: chargeRows.length },
-            { href: `${base}/my-units?statement=payments`, label: "Payments", active: statement === "payments", count: paymentRows.length },
+            { href: `${base}/my-units#statement`, label: "Charges", active: statement === "charges", count: chargeRows.length },
+            { href: `${base}/my-units?statement=payments#statement`, label: "Payments", active: statement === "payments", count: paymentRows.length },
           ]} />
           {statement === "charges" ? (
             <DataTable id="c" rows={chargeRows} columns={chargeCols} currency={cur} defaultSort={{ key: "due_date", desc: true }}

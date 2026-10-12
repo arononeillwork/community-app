@@ -20,15 +20,17 @@ export default async function EditBinPage({ params }: { params: Promise<{ commun
   if (!b) notFound();
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-5">
+    <div className="mx-auto max-w-2xl">
       <PageHeader title="Edit bin" intro={b.bin_type} back={{ href: `/${s.community.slug}/info`, label: "Bins & info" }} />
-      <BinForm slug={s.community.slug} id={b.id}
-        initial={{
-          bin_type: b.bin_type, color: b.color, color_hex: b.color_hex, weekdays: b.weekdays ?? [],
-          put_out_time: b.put_out_time ?? "", location: b.location ?? "", notes: b.notes ?? "", sort: String(b.sort),
-        }} />
-      <ConfirmDelete action={deleteBin.bind(null, s.community.slug, b.id)} title="Delete bin"
-        description="It disappears from the bin days and the home page." label="Delete bin" question={`Delete “${b.bin_type}”? This cannot be undone.`} />
+      <div className="flex flex-col gap-5">
+        <BinForm slug={s.community.slug} id={b.id}
+          initial={{
+            bin_type: b.bin_type, color: b.color, color_hex: b.color_hex, weekdays: b.weekdays ?? [],
+            put_out_time: b.put_out_time ?? "", location: b.location ?? "", notes: b.notes ?? "", sort: String(b.sort),
+          }} />
+        <ConfirmDelete action={deleteBin.bind(null, s.community.slug, b.id)} title="Delete bin"
+          description="It disappears from the bin days and the home page." label="Delete bin" question={`Delete “${b.bin_type}”? This cannot be undone.`} />
+      </div>
     </div>
   );
 }

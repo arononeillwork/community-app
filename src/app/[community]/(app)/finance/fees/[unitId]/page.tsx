@@ -187,6 +187,7 @@ export default async function FlatStatementPage({ params, searchParams }: {
                       </div>
                       <ConfirmDialog
                         label="Remove"
+                        ariaLabel={`Remove the payment of ${money(p.amount_cents, cur)} received on ${date(p.paid_on)}`}
                         icon={<Trash2 aria-hidden className="size-4" />}
                         size="sm"
                         variant="ghost"

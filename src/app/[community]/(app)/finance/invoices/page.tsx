@@ -7,6 +7,7 @@ import DataTable, { type Column } from "@/components/DataTable";
 import FinanceToolbar from "@/components/finance/FinanceToolbar";
 import ViewPills from "@/components/finance/ViewPills";
 import { fetchAll } from "@/components/finance/fetch-all";
+import { isOverdue } from "@/components/finance/dates";
 
 export const metadata = { title: "Invoices" };
 
@@ -36,21 +37,24 @@ export default async function InvoicesPage({ params, searchParams }: {
   const s = await requireFinance(community);
   const supabase = await createClient();
   const base = `/${s.community.slug}/finance/invoices`;
-  const yearStart = `${todayInput(s.community.timezone).slice(0, 4)}-01-01`;
+  const today = todayInput(s.community.timezone);
+  const yearStart = `${today.slice(0, 4)}-01-01`;
 
-  const all = await fetchAll<Row>((from, to) => supabase
+  const fetched = await fetchAll<Row>((from, to) => supabase
     .from("v_invoice_list")
     .select("id, invoice_number, supplier_name, category_name, contract_title, issue_date, due_date, net_cents, vat_cents, total_cents, status, overdue, approvals")
     .eq("community_id", s.community.id)
     .order("issue_date", { ascending: false }).order("id")
     .range(from, to));
+  // Overdue by the community's calendar (the view uses the database server's date).
+  const all = fetched.map((r) => ({ ...r, overdue: isOverdue(r.status, r.due_date, today) }));
   const current = VIEWS.find((v) => v.key === view) ?? VIEWS[0];
   const rows = all.filter((r) => current.match(r, yearStart)).map((r) => ({ ...r, category_name: r.category_name ?? "Uncategorised" }));
 
   const columns: Column[] = [
     { key: "invoice_number", header: "Invoice", href: `${base}/{id}` },
     { key: "supplier_name", header: "Supplier", filter: true },
-    { key: "category_name", header: "Category", filter: true },
+    { key: "category_name", header: "Category", filter: true, mobileHidden: true },
     { key: "issue_date", header: "Issued", type: "date" },
     { key: "due_date", header: "Due", type: "date" },
     { key: "total_cents", header: "Total", type: "money", total: true },
@@ -72,7 +76,8 @@ export default async function InvoicesPage({ params, searchParams }: {
             href: v.key ? `${base}?view=${v.key}` : base,
             label: v.label,
             active: v.key === current.key,
-            count: all.filter((r) => v.match(r, yearStart)).length,
+            // "All" has no count: the table footer already shows the total, and the pills then fit one row at laptop width.
+            count: v.key ? all.filter((r) => v.match(r, yearStart)).length : undefined,
           }))} />
           {/* Invoice numbers stay on one line in the table. */}
           <div className="[&_tbody_td:first-child]:whitespace-nowrap">

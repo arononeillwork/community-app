@@ -10,6 +10,7 @@ import { attachmentName, guessVatRate, requiredApprovals } from "@/components/fi
 import { type AuditRow, shortDateTime, summarise } from "@/components/finance/audit";
 import { loadLookups } from "@/components/finance/lookups";
 import { personName } from "@/components/finance/people";
+import { dayOf, isOverdue } from "@/components/finance/dates";
 import InvoiceActions from "./InvoiceActions";
 import { approveInvoice, disputeInvoice, markInvoicePaid, reopenInvoice } from "../actions";
 
@@ -22,7 +23,7 @@ const SAVED: Record<string, { title: string; text: string }> = {
   approved: { title: "Invoice approved", text: "It can now be paid. Mark it as paid once the money has left the bank." },
   paid: { title: "Marked as paid", text: "The payment date is recorded in the history." },
   disputed: { title: "Invoice disputed", text: "It will not be paid until the dispute is reopened." },
-  reopened: { title: "Dispute reopened", text: "The invoice is back in the approval flow." },
+  reopened: { title: "Dispute resolved", text: "The invoice is back in the approval flow." },
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -62,7 +63,7 @@ export default async function InvoicePage({ params, searchParams }: {
   const given = approvals ?? [];
   const mine = given.some((a) => a.approver_id === s.userId);
   const today = todayInput(tz);
-  const overdue = (inv.status === "received" || inv.status === "approved") && inv.due_date && inv.due_date < today;
+  const overdue = isOverdue(inv.status, inv.due_date, today);
   const daysLate = overdue ? Math.round((Date.parse(today) - Date.parse(inv.due_date)) / 86400000) : 0;
   const rate = guessVatRate(Number(inv.net_cents), Number(inv.vat_cents));
   const history = ([...(invoiceAudit ?? []), ...(approvalAudit ?? [])] as AuditRow[])
@@ -109,7 +110,7 @@ export default async function InvoicePage({ params, searchParams }: {
             { label: "Category", value: inv.category?.name ?? "Uncategorised" },
             { label: "Contract", value: inv.contract ? <Link href={`${base}/contracts/${inv.contract.id}`}>{inv.contract.title}</Link> : "Not under a contract" },
             ...(inv.notes ? [{ label: "Description", value: <span className="whitespace-pre-line">{inv.notes}</span> }] : []),
-            { label: "Added by", value: <>{personName(lookups.people, inv.created_by)} <span className="text-muted">· {date(inv.created_at)}</span></> },
+            { label: "Added by", value: <>{personName(lookups.people, inv.created_by)} <span className="text-muted">· {dayOf(inv.created_at, tz)}</span></> },
           ]} />
 
           <div>
@@ -152,7 +153,7 @@ export default async function InvoicePage({ params, searchParams }: {
                     <Avatar name={name} size="sm" />
                     <div className="min-w-0">
                       <div className="truncate font-medium">{name}{a.approver_id === s.userId && <span className="font-normal text-muted"> (you)</span>}</div>
-                      <div className="text-sm text-muted">{date(a.approved_at)}</div>
+                      <div className="text-sm text-muted">{dayOf(a.approved_at, tz)}</div>
                     </div>
                   </li>
                 );

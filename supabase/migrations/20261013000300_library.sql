@@ -2,7 +2,8 @@
 --
 --   1. Document files follow their document's visibility. Until now any member could read any file in
 --      the private "documents" bucket, so a tenant holding the path of an owners-only file could open it.
---      Files that no document row points to keep the old rule (members of the community).
+--      Files that no document row points to (an upload still being saved, or an old file whose removal
+--      failed) are for administrators only, so they can never leak through a bucket listing.
 --   2. Administrators can delete files in the "documents" bucket (needed to delete or replace a document).
 --   3. Administrators can add and remove translations of their community's documents.
 --   4. Places suggested by residents show who suggested them: the full name to administrators and to the
@@ -19,11 +20,10 @@ returns boolean language sql stable security definer set search_path = '' as $$
   select case
     when f.c is null then false
     when public.is_admin(f.c) then true
-    when exists (select 1 from public.documents d where d.storage_path = p_name) then exists (
+    else exists (
       select 1 from public.documents d
       where d.storage_path = p_name and d.community_id = f.c and public.can_see(d.community_id, d.visibility)
     )
-    else public.is_member(f.c)
   end
   from f
 $$;

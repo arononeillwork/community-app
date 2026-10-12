@@ -89,9 +89,9 @@ export default function InvoiceActions({ status, canApprove, approveNote, today,
       {status === "disputed" && (
         <form action={reopenAction}>
           <button type="submit" disabled={reopening} className={buttonClass("secondary", "md", "w-full")}>
-            <RotateCcw aria-hidden className="size-4" /> {reopening ? "Reopening…" : "Reopen the dispute"}
+            <RotateCcw aria-hidden className="size-4" /> {reopening ? "Saving…" : "Resolve the dispute"}
           </button>
-          <p className="hint mt-2">Use this when the supplier has corrected the invoice or the issue is settled.</p>
+          <p className="hint mt-2">When the supplier has corrected the invoice or the issue is settled, this sends it back for approval and payment.</p>
         </form>
       )}
     </div>

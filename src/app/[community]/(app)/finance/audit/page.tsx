@@ -7,6 +7,7 @@ import FinanceToolbar from "@/components/finance/FinanceToolbar";
 import { ACTION_LABELS, AREA_LABELS, type AuditRow, recordLabel, summarise } from "@/components/finance/audit";
 import { loadLookups } from "@/components/finance/lookups";
 import { personName } from "@/components/finance/people";
+import { isoDayOf } from "@/components/finance/dates";
 
 export const metadata = { title: "Audit log" };
 
@@ -29,7 +30,8 @@ export default async function AuditPage({ params }: { params: Promise<{ communit
 
   const rows = ((data ?? []) as AuditRow[]).map((r) => ({
     id: r.id,
-    at: r.at,
+    // The community's calendar day (a bare date renders the same on the server and in the browser).
+    day: isoDayOf(r.at, tz),
     time: time.format(new Date(r.at)),
     who: personName(lookups.people, r.actor),
     area: AREA_LABELS[r.table_name] ?? r.table_name,
@@ -39,7 +41,7 @@ export default async function AuditPage({ params }: { params: Promise<{ communit
   }));
 
   const columns: Column[] = [
-    { key: "at", header: "When", type: "date", subKey: "time" },
+    { key: "day", header: "When", type: "date", subKey: "time" },
     { key: "record", header: "Record", href: `${base}/{id}`, subKey: "change", primary: true },
     { key: "area", header: "Area", filter: true, mobileHidden: true },
     { key: "action", header: "Action", filter: true, mobileHidden: true },
@@ -60,8 +62,8 @@ export default async function AuditPage({ params }: { params: Promise<{ communit
         <DataTable
           rows={rows}
           columns={columns}
-          dateKey="at"
-          defaultSort={{ key: "at", desc: true }}
+          dateKey="day"
+          defaultSort={{ key: "day", desc: true }}
           currency={s.community.currency}
           exportName="audit-log"
           searchPlaceholder="Search records, people, changes…"

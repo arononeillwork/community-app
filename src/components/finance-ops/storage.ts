@@ -32,3 +32,15 @@ export async function signedFinanceUrls(paths: (string | null | undefined)[]) {
   const { data } = await supabase.storage.from("finance").createSignedUrls(list, 3600);
   return new Map((data ?? []).filter((d) => d.path && d.signedUrl).map((d) => [d.path as string, d.signedUrl]));
 }
+
+/**
+ * Best-effort removal of files that are no longer linked (a contract file that was replaced or
+ * removed, or an upload whose record could not be saved). Storage RLS lets finance roles delete
+ * only in their own community's contracts/ and quotes/ folders; a failure just leaves the file.
+ */
+export async function removeFinanceFiles(paths: (string | null | undefined)[]) {
+  const list = paths.filter((p): p is string => !!p);
+  if (!list.length) return;
+  const supabase = await createClient();
+  await supabase.storage.from("finance").remove(list).catch(() => undefined);
+}

@@ -118,3 +118,16 @@ end $$;
 create trigger budget_lines_locked_guard
 before insert or update or delete on public.budget_lines
 for each row execute function public.budget_lines_locked_guard();
+
+-- ---------------------------------------------------------------------------
+-- 4. Contract and quote files can be removed by finance roles
+-- ---------------------------------------------------------------------------
+-- Replacing or removing a contract's signed copy deletes the old file, and an upload whose record
+-- could not be saved is cleaned up. Only the finance roles of the community in the path, and only
+-- in its contracts/ and quotes/ folders (invoice files have their own policy).
+drop policy if exists "finance delete contract and quote files" on storage.objects;
+create policy "finance delete contract and quote files" on storage.objects for delete using (
+  bucket_id = 'finance'
+  and split_part(name, '/', 2) in ('contracts', 'quotes')
+  and public.is_finance(public.path_community(name))
+);

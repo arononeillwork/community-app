@@ -11,6 +11,7 @@ import { Flash } from "@/components/finance-ops/Flash";
 import { SubmitButton } from "@/components/finance-ops/SubmitButton";
 import { daysBetween, frequencyLabel, relativeDays } from "@/components/finance-ops/dates";
 import { peopleByUnit } from "@/components/finance-ops/people";
+import { fetchAllRows } from "@/components/finance-ops/fetch";
 import { deleteSchedule, generateCharges, sendReminder, splitLevy } from "./actions";
 
 export const metadata = { title: "Owner fees" };
@@ -47,15 +48,19 @@ export default async function FeesPage({ params, searchParams }: {
   const year = Number(today.slice(0, 4));
   const tab = sp.tab === "flats" || sp.tab === "levies" ? sp.tab : "overview";
 
-  const [{ data: balanceData }, { data: chargeData }, { data: schedules }, { data: levies }] = await Promise.all([
+  const [{ data: balanceData, error: balanceError }, chargeRes, { data: schedules }, { data: levies }] = await Promise.all([
     supabase.from("v_unit_balance").select("unit_id, label, building_name, coefficient, charged_cents, paid_cents, overdue_cents, oldest_unpaid_due, last_reminder_at")
       .eq("community_id", c).order("label"),
-    supabase.from("fee_charges").select("unit_id, schedule_id, levy_id, period_label, due_date, amount_cents, paid_cents, status").eq("community_id", c),
+    // Every charge of every year: more than one API page once a few years of charges exist.
+    fetchAllRows<Charge>((from, to) => supabase.from("fee_charges")
+      .select("unit_id, schedule_id, levy_id, period_label, due_date, amount_cents, paid_cents, status")
+      .eq("community_id", c).order("due_date").order("id").range(from, to)),
     supabase.from("fee_schedules").select("id, year, frequency, method, annual_total_cents, fixed_amount_cents, budget_id").eq("community_id", c).order("year", { ascending: false }),
     supabase.from("levies").select("id, title, description, total_cents, due_date, created_at").eq("community_id", c).order("due_date", { ascending: false }),
   ]);
   const balances = (balanceData ?? []) as Balance[];
-  const charges = (chargeData ?? []) as Charge[];
+  const charges = chargeRes.rows;
+  const loadError = !!balanceError || chargeRes.error;
   const { owners } = await peopleByUnit(supabase, c, balances.map((b) => ({ id: b.unit_id, label: b.label })));
   const ownerNames = (unitId: string) => (owners.get(unitId) ?? []).map((p) => p.name).join(", ");
 
@@ -92,6 +97,7 @@ export default async function FeesPage({ params, searchParams }: {
       ]} />
 
       <div className="flex flex-col gap-5">
+        {loadError && <Notice tone="bad">Some fee figures could not be loaded, so totals may be incomplete. Please refresh the page.</Notice>}
         {(notice || generated != null || sp.levy === "split") && (
         <Flash>
         {notice && <Notice tone={notice.tone}>{notice.text}</Notice>}
@@ -110,13 +116,13 @@ export default async function FeesPage({ params, searchParams }: {
           <>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <Stat label={`Expected in ${year}`} value={money(expected, cur)} sub="Fees and levies due this year" />
-              <Stat label="Collected" value={money(collected, cur)} sub={expected ? `${Math.round((collected / expected) * 100)}% of this year's charges` : undefined} tone="ok" />
+              <Stat label="Collected" value={money(collected, cur)} sub={expected ? `${Math.round((collected / expected) * 100)}% of this year's charges` : undefined} tone={collected > 0 ? "ok" : undefined} />
               <Stat label="Overdue" value={money(overdueTotal, cur)} tone={overdueTotal > 0 ? "bad" : undefined} sub={`${money(notYetDue, cur)} more not due yet`} />
               <Stat label="Flats in arrears" value={arrears.length} tone={arrears.length ? "warn" : undefined} sub={`of ${balances.length} flats`} />
             </div>
 
             <div className="grid gap-5 lg:grid-cols-3">
-              <Card padded={false} className="lg:col-span-2">
+              <Card padded={false} className="lg:col-span-2 lg:self-start">
                 <div className="p-5 pb-1 sm:p-6 sm:pb-1">
                   <SectionHeader icon={AlarmClock} title="Arrears"
                     description={arrears.length ? "Flats with fees past their due date, largest first" : undefined}
@@ -146,9 +152,10 @@ export default async function FeesPage({ params, searchParams }: {
                           <div className="flex flex-wrap items-center justify-between gap-3 sm:flex-col sm:items-end">
                             <div className="tabular text-[1.125rem] font-semibold text-bad">{money(b.overdue_cents, cur)}</div>
                             <div className="flex flex-wrap gap-2">
-                              <Button href={`${base}/payments/new?unit=${b.unit_id}`} variant="secondary" size="sm">Record payment</Button>
+                              <Button href={`${base}/payments/new?unit=${b.unit_id}`} variant="secondary" size="sm" aria-label={`Record a payment for flat ${b.label}`}>Record payment</Button>
                               <ConfirmDialog
                                 label="Send reminder"
+                                ariaLabel={`Send a reminder to the owner of flat ${b.label}`}
                                 size="sm"
                                 variant="soft"
                                 confirmVariant="primary"
@@ -172,7 +179,7 @@ export default async function FeesPage({ params, searchParams }: {
                 )}
               </Card>
 
-              <Card className="flex flex-col">
+              <Card className="flex flex-col lg:self-start">
                 <SectionHeader icon={CalendarRange} title="Fee schedule" description="How the yearly fees are split into charges" />
                 {(schedules ?? []).length === 0 ? (
                   <div className="flex flex-col items-start gap-3">
@@ -193,7 +200,7 @@ export default async function FeesPage({ params, searchParams }: {
                             {complete ? <Badge tone="ok">Charged</Badge> : done ? <Badge tone="warn">{done} of {periods} periods</Badge> : <Badge tone="neutral">No charges yet</Badge>}
                           </div>
                           <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[0.9375rem]">
-                            <dt className="text-muted">Paid</dt><dd>{frequencyLabel(sc.frequency)}</dd>
+                            <dt className="text-muted">Owners pay</dt><dd>{frequencyLabel(sc.frequency)}</dd>
                             <dt className="text-muted">{sc.method === "fixed" ? "Per flat" : "Per year"}</dt>
                             <dd className="tabular">{sc.method === "fixed" ? `${money(sc.fixed_amount_cents, cur)} a period` : money(sc.annual_total_cents, cur)}</dd>
                             <dt className="text-muted">Split</dt><dd>{sc.method === "fixed" ? "Same amount per flat" : "By participation coefficient"}</dd>
@@ -222,7 +229,7 @@ export default async function FeesPage({ params, searchParams }: {
                   </ul>
                 )}
                 {(schedules ?? []).length > 0 && !(schedules ?? []).some((sc) => sc.year === year + 1) && (
-                  <div className="mt-auto pt-4">
+                  <div className="pt-4">
                     <Button href={`${base}/schedule/new?year=${year + 1}`} variant="ghost" size="sm"><Plus aria-hidden className="size-4" /> Set up {year + 1}</Button>
                   </div>
                 )}
@@ -234,6 +241,7 @@ export default async function FeesPage({ params, searchParams }: {
         {tab === "flats" && (
           <div className="relative overflow-x-clip">
             <DataTable
+              timeZone={s.community.timezone}
               rows={balances.map((b) => ({
                 unit_id: b.unit_id,
                 label: b.label,
@@ -259,6 +267,7 @@ export default async function FeesPage({ params, searchParams }: {
                 { label: "Up to date", params: { f_status: "paid" } },
               ]}
               defaultSort={{ key: "overdue_cents", desc: true }}
+              currency={cur}
               exportName="owner-fees"
               searchPlaceholder="Search flat or owner…"
               empty="No flats match."

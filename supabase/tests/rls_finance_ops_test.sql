@@ -234,3 +234,24 @@ delete from budgets where year = 2099 and community_id = '0cea0a00-0000-4000-800
 select pg_temp.check((select count(*) from budget_lines bl where not exists (select 1 from budgets b where b.id = bl.budget_id)) = 0,
   'deleting a whole approved budget still removes its lines');
 rollback;
+
+-- ---------------------------------------------------------------- contract and quote files can be removed by finance only
+-- Direct deletes are normally blocked by the storage API guard; it is lifted here so the RLS policy itself is tested.
+begin;
+set local storage.allow_delete_query = 'true';
+insert into storage.objects (bucket_id, name) values
+  ('finance', '0cea0a00-0000-4000-8000-000000000001/contracts/qa-test.pdf'),
+  ('finance', '0cea0a00-0000-4000-8000-000000000001/quotes/qa-test.pdf'),
+  ('finance', '0cea0a00-0000-4000-8000-000000000001/other/qa-test.pdf');
+select pg_temp.login('owner4@oceanagardens.test');
+with d as (delete from storage.objects where bucket_id = 'finance' and name like '%/qa-test.pdf' returning 1)
+select pg_temp.check(count(*) = 0, 'an owner cannot delete finance files') from d;
+reset role;
+select pg_temp.login('admin@demoheights.test');
+with d as (delete from storage.objects where bucket_id = 'finance' and name like '%/qa-test.pdf' returning 1)
+select pg_temp.check(count(*) = 0, 'another community''s admin cannot delete Oceana finance files') from d;
+reset role;
+select pg_temp.login('treasurer@oceanagardens.test');
+with d as (delete from storage.objects where bucket_id = 'finance' and name like '%/qa-test.pdf' returning name)
+select pg_temp.check(count(*) = 2 and bool_and(name !~ '/other/'), 'the treasurer can delete contract and quote files, not other folders') from d;
+rollback;

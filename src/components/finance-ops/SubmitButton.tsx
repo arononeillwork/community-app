@@ -5,7 +5,7 @@ import { useFormStatus } from "react-dom";
 import { buttonClass } from "@/components/ui";
 
 /** Submit button that shows a busy label while its form's server action runs. */
-export function SubmitButton({ children, pendingLabel, variant = "primary", size = "md", className, name, value }: {
+export function SubmitButton({ children, pendingLabel, variant = "primary", size = "md", className, name, value, ariaLabel }: {
   children: ReactNode;
   pendingLabel?: string;
   variant?: "primary" | "secondary" | "soft" | "danger" | "ghost";
@@ -13,10 +13,12 @@ export function SubmitButton({ children, pendingLabel, variant = "primary", size
   className?: string;
   name?: string;
   value?: string;
+  /** Fuller accessible name when the same button repeats on a page. */
+  ariaLabel?: string;
 }) {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" name={name} value={value} disabled={pending} aria-busy={pending} className={buttonClass(variant, size, className)}>
+    <button type="submit" name={name} value={value} disabled={pending} aria-busy={pending} aria-label={ariaLabel} className={buttonClass(variant, size, className)}>
       {pending && pendingLabel ? pendingLabel : children}
     </button>
   );

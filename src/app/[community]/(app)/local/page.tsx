@@ -132,7 +132,7 @@ export default async function LocalPage({ params, searchParams }: {
                         {s.isAdmin && <IconButton icon={Pencil} label={`Edit ${p.name}`} href={`${base}/local/${p.id}/edit`} className="-mr-2 -mt-1" />}
                       </div>
 
-                      {p.description && <p className="line-clamp-2 text-[0.9375rem] text-ink-2">{p.description}</p>}
+                      {p.description && <p className="text-[0.9375rem] text-ink-2">{p.description}</p>}
 
                       {(p.address || p.step_free || p.accessibility_notes) && (
                         <div className="flex flex-col gap-1 text-sm text-muted">

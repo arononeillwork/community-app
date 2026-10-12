@@ -73,10 +73,15 @@ export async function saveBudgetLines(slug: string, budgetId: string, _prev: Bud
   }
   if (!upserts.length) return { error: "Please enter an amount for at least one category.", values };
 
-  const { error } = await supabase.from("budget_lines").upsert(upserts, { onConflict: "budget_id,category_id" });
+  // Only write lines that changed, so the audit log shows what was actually edited.
+  const { data: current } = await supabase.from("budget_lines").select("category_id, amount_cents").eq("community_id", c).eq("budget_id", budget.id);
+  const before = new Map((current ?? []).map((l) => [l.category_id, Number(l.amount_cents)]));
+  const changed = upserts.filter((u) => before.get(u.category_id) !== u.amount_cents);
+  const { error } = changed.length ? await supabase.from("budget_lines").upsert(changed, { onConflict: "budget_id,category_id" }) : { error: null };
   if (error) return { error: "The budget could not be saved. Please try again.", values };
-  if (remove.length) {
-    const { error: delError } = await supabase.from("budget_lines").delete().eq("community_id", c).eq("budget_id", budget.id).in("category_id", remove);
+  const emptied = remove.filter((id) => before.has(id));
+  if (emptied.length) {
+    const { error: delError } = await supabase.from("budget_lines").delete().eq("community_id", c).eq("budget_id", budget.id).in("category_id", emptied);
     if (delError) return { error: "Some empty lines could not be removed. Please try again.", values };
   }
   done(slug, budget.year, "&saved=lines");

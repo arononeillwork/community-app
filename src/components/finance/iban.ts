@@ -27,9 +27,5 @@ export function formatIban(v: string) {
   return normaliseIban(v).replace(/(.{4})/g, "$1 ").trim();
 }
 
-/** Only the last four characters, for showing on screen. */
-export function maskIban(v: string | null | undefined) {
-  if (!v) return "";
-  const n = normaliseIban(v);
-  return `${n.slice(0, 2)}•• •••• ${n.slice(-4)}`;
-}
+// The masked form shown on screen ("ES•• •••• 4567") comes from the database: suppliers.iban_masked
+// (migration 20261013000500), so pages never load the full number.

@@ -128,7 +128,8 @@ export default async function QuotesPage({ params, searchParams }: {
                       <div className="mt-auto flex flex-wrap items-center gap-2 pt-4">
                         {!q.chosen && (
                           <form action={chooseQuote.bind(null, slug, q.id)}>
-                            <SubmitButton variant={isCheapest ? "primary" : "secondary"} size="sm" pendingLabel="Saving…">Choose this quote</SubmitButton>
+                            <SubmitButton variant={isCheapest ? "primary" : "secondary"} size="sm" pendingLabel="Saving…"
+                              ariaLabel={`Choose the quote from ${name} for ${money(q.amount_cents, cur)}`}>Choose this quote</SubmitButton>
                           </form>
                         )}
                         {q.file_path && url && (

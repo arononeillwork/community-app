@@ -1,6 +1,8 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
+import clsx from "clsx";
+import { Check } from "lucide-react";
 import { Card, Notice, buttonClass } from "@/components/ui";
 import { ChoiceCard, Choices, Field, fieldProps } from "@/components/library/Field";
 import { PLACE_TYPES, PLACE_TYPE_SINGULAR, PRICE_WORDS } from "@/components/library/meta";
@@ -100,18 +102,25 @@ export default function PlaceForm({ slug, id, mode, initial }: {
       <Card className="flex flex-col gap-4">
         <h2 className="text-[1.0625rem] font-semibold">Getting in</h2>
         <Choices id="step_free" legend="Step-free access" error={err("step_free")} hint="No steps from the street, or a ramp or lift.">
-          <div className="grid gap-2 sm:grid-cols-3">
-            {[{ v: "yes", t: "Yes" }, { v: "no", t: "No" }, { v: "", t: "Not sure" }].map((o) => (
-              <ChoiceCard key={o.v || "unknown"} checked={v.step_free === o.v} className="items-center py-3">
-                <input type="radio" name="step_free" value={o.v} checked={v.step_free === o.v} onChange={set("step_free")} className="size-5 shrink-0 accent-[var(--brand)]" />
-                <span className="text-ink">{o.t}</span>
-              </ChoiceCard>
-            ))}
+          <div className="grid grid-cols-3 gap-2">
+            {/* Three short answers side by side, also on phones: the selected one is filled and ticked. */}
+            {[{ v: "yes", t: "Yes" }, { v: "no", t: "No" }, { v: "", t: "Not sure" }].map((o) => {
+              const checked = v.step_free === o.v;
+              return (
+                <label key={o.v || "unknown"}
+                  className={clsx("flex min-h-12 cursor-pointer items-center justify-center gap-1.5 rounded-xl border px-2 text-center transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-[var(--focus)]",
+                    checked ? "border-brand bg-brand-soft text-brand-text" : "border-line text-ink hover:bg-surface-2")}>
+                  <input type="radio" name="step_free" value={o.v} checked={checked} onChange={set("step_free")} className="sr-only" />
+                  {checked && <Check aria-hidden className="size-4 shrink-0" />}
+                  <span>{o.t}</span>
+                </label>
+              );
+            })}
           </div>
         </Choices>
         <Field id="accessibility_notes" label="Access notes" optional error={err("accessibility_notes")}>
           <input {...fieldProps("accessibility_notes", err("accessibility_notes"))} className="input" maxLength={200} value={v.accessibility_notes} onChange={set("accessibility_notes")}
-            placeholder="e.g. Ramp from the promenade, benches every 200 m" />
+            placeholder="e.g. Ramp from the promenade" />
         </Field>
       </Card>
 

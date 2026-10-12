@@ -87,8 +87,8 @@ export default async function NotificationsPage({ params, searchParams }: {
 
       {rows.length === 0 ? (
         unreadOnly && (total ?? 0) > 0 ? (
-          <Empty icon={CheckCheck} title="You're all caught up" action={<Button variant="secondary" href={`${base}/notifications`}>Show all</Button>}>
-            Nothing unread. Older notifications are still under All.
+          <Empty icon={CheckCheck} title="Nothing unread" action={<Button variant="secondary" href={`${base}/notifications`}>Show all</Button>}>
+            Older notifications are still under All.
           </Empty>
         ) : (
           <Empty icon={Bell} title="No notifications yet"

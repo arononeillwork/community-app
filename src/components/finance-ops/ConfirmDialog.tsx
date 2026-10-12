@@ -9,9 +9,11 @@ import { SubmitButton } from "./SubmitButton";
  * hard to undo (ending a contract, removing a payment) or that message people (fee reminders).
  * Extra form fields (a date, a note) can be passed as children.
  */
-export function ConfirmDialog({ label, icon, title, description, confirmLabel, pendingLabel, action, children,
+export function ConfirmDialog({ label, ariaLabel, icon, title, description, confirmLabel, pendingLabel, action, children,
   variant = "secondary", confirmVariant = "danger", size = "md", hidden, defaultOpen = false }: {
   label: string;
+  /** Fuller accessible name when the same button repeats in a list, e.g. "Send a reminder to the owner of flat B-2B". */
+  ariaLabel?: string;
   /** A rendered icon element, e.g. <Square aria-hidden className="size-4" />. */
   icon?: ReactNode;
   title: string;
@@ -33,7 +35,7 @@ export function ConfirmDialog({ label, icon, title, description, confirmLabel, p
   useEffect(() => { if (defaultOpen && !ref.current?.open) ref.current?.showModal(); }, [defaultOpen]);
   return (
     <>
-      <button type="button" className={buttonClass(variant, size)} onClick={() => ref.current?.showModal()}>
+      <button type="button" className={buttonClass(variant, size)} aria-label={ariaLabel} aria-haspopup="dialog" onClick={() => ref.current?.showModal()}>
         {icon} {label}
       </button>
       <dialog ref={ref} aria-labelledby={titleId}

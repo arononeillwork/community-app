@@ -131,6 +131,17 @@ export default async function ContractPage({ params, searchParams }: {
           This contract renews automatically on {date(k.end_date)} unless notice is given by {date(noticeDeadline)}.
         </Notice>
       )}
+      {active && endDays != null && endDays < 0 && (
+        k.auto_renew ? (
+          <Notice tone="info" title="This contract has renewed">
+            It renewed automatically on {date(k.end_date)}. <Link href={`${base}/${k.id}/edit`}>Update the dates</Link> to the new term so the notice deadline stays right.
+          </Notice>
+        ) : (
+          <Notice tone="warn" title="The end date has passed">
+            This contract ended on {date(k.end_date)} but is still marked as active. Renew it, or end it so it no longer counts as active.
+          </Notice>
+        )
+      )}
 
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="flex flex-col gap-5 lg:col-span-2">
@@ -171,11 +182,14 @@ export default async function ContractPage({ params, searchParams }: {
                 {list.slice(0, 6).map((i) => (
                   <li key={i.id} className="flex items-center gap-3 px-5 py-3 sm:px-6">
                     <div className="min-w-0 flex-1">
-                      <Link href={`/${slug}/finance/invoices/${i.id}`} className="font-medium no-underline hover:underline">{i.invoice_number}</Link>
-                      <div className="text-sm text-muted">{date(i.issue_date)}</div>
+                      <Link href={`/${slug}/finance/invoices/${i.id}`} className="font-medium no-underline [overflow-wrap:anywhere] hover:underline">{i.invoice_number}</Link>
+                      <div className="whitespace-nowrap text-sm text-muted">{date(i.issue_date)}</div>
                     </div>
-                    <StatusBadge value={i.status} />
-                    <div className="tabular w-24 text-right text-[0.9375rem] text-ink">{money(i.total_cents, cur)}</div>
+                    {/* Phone: amount above the status; wider screens: status, then amount in a fixed column. */}
+                    <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row-reverse sm:items-center sm:gap-3">
+                      <div className="tabular text-right text-[0.9375rem] text-ink sm:w-24">{money(i.total_cents, cur)}</div>
+                      <StatusBadge value={i.status} />
+                    </div>
                   </li>
                 ))}
               </ul>

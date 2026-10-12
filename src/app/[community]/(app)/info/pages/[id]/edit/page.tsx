@@ -19,18 +19,20 @@ export default async function EditInfoPage({ params }: { params: Promise<{ commu
   if (!p) notFound();
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-5">
+    <div className="mx-auto max-w-2xl">
       <PageHeader title="Edit information" intro={p.title} back={{ href: `/${s.community.slug}/info`, label: "Bins & info" }} />
-      <InfoPageForm slug={s.community.slug} id={p.id}
-        initial={{
-          title: p.title,
-          // Older rows may use a section or icon the form does not offer; fall back to the defaults.
-          category: INFO_CATEGORY_KEYS.includes(p.category) ? p.category : "general",
-          icon: INFO_ICON_KEYS.includes(p.icon) ? p.icon : "info",
-          body: p.body, visibility: p.visibility, sort: String(p.sort),
-        }} />
-      <ConfirmDelete action={deleteInfoPage.bind(null, s.community.slug, p.id)} title="Delete information"
-        description="Residents will no longer see it." label="Delete information" question={`Delete “${p.title}”? This cannot be undone.`} />
+      <div className="flex flex-col gap-5">
+        <InfoPageForm slug={s.community.slug} id={p.id}
+          initial={{
+            title: p.title,
+            // Older rows may use a section or icon the form does not offer; fall back to the defaults.
+            category: INFO_CATEGORY_KEYS.includes(p.category) ? p.category : "general",
+            icon: INFO_ICON_KEYS.includes(p.icon) ? p.icon : "info",
+            body: p.body, visibility: p.visibility, sort: String(p.sort),
+          }} />
+        <ConfirmDelete action={deleteInfoPage.bind(null, s.community.slug, p.id)} title="Delete information"
+          description="Residents will no longer see it." label="Delete information" question={`Delete “${p.title}”? This cannot be undone.`} />
+      </div>
     </div>
   );
 }

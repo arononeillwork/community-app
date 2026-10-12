@@ -132,6 +132,7 @@ export default async function ContractsPage({ params, searchParams }: {
               rows={rows}
               columns={columns}
               defaultSort={{ key: "notice_deadline" }}
+              currency={s.community.currency}
               exportName="contracts"
               searchPlaceholder="Search contracts or suppliers…"
               empty={view === "active" ? "No active contracts." : "No contracts match this view."}

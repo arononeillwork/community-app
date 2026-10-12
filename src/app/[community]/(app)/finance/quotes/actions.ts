@@ -6,7 +6,7 @@ import { requireFinance } from "@/lib/community";
 import { createClient } from "@/lib/supabase/server";
 import { parseEurosToCents } from "@/lib/format";
 import { isDate, jobAnchor } from "@/components/finance-ops/dates";
-import { uploadFinanceFile } from "@/components/finance-ops/storage";
+import { removeFinanceFiles, uploadFinanceFile } from "@/components/finance-ops/storage";
 
 export type QuoteFormState = { error?: string; values?: Record<string, string> } | undefined;
 
@@ -54,7 +54,10 @@ export async function addQuote(slug: string, _prev: QuoteFormState, form: FormDa
     amount_cents: amount, valid_until: validUntil || null, notes: text(form, "notes", 1000) || null,
     file_path: upload.path, chosen: false,
   }).select("id").single();
-  if (error || !data) return fail("The quote could not be saved. Please try again.");
+  if (error || !data) {
+    await removeFinanceFiles([upload.path]);
+    return fail("The quote could not be saved. Please try again.");
+  }
 
   revalidatePath(`/${slug}/finance`, "layout");
   redirect(`/${slug}/finance/quotes?added=${data.id}#${jobAnchor(existing ?? job)}`);

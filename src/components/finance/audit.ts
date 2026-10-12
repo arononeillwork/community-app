@@ -1,4 +1,5 @@
 /* Turning audit_log rows into words: record names, field labels, readable values and change summaries. */
+import { STATUS_LABELS } from "@/components/ui";
 import { attachmentName } from "./invoice";
 
 export type AuditRow = {
@@ -47,6 +48,21 @@ const FIELD_LABELS: Record<string, string> = {
 
 /** Columns that are never interesting to a person reading the log. */
 const HIDDEN = new Set(["id", "community_id", "total_cents"]);
+
+/** Fields in the order people read a record: what it is, who, money, dates, then the rest; timestamps last. */
+const ORDER = [
+  "name", "title", "job_title", "description", "invoice_number", "invoice_id", "supplier_id", "supplier_name", "service_type",
+  "contact_name", "phone", "email", "website", "address", "tax_id", "iban", "unit_id", "period_label", "year", "category_id",
+  "contract_id", "budget_id", "schedule_id", "levy_id", "status", "approver_id", "net_cents", "vat_cents", "vat_rate",
+  "amount_cents", "paid_cents", "unallocated_cents", "annual_total_cents", "fixed_amount_cents", "billing_frequency", "method",
+  "frequency", "issue_date", "start_date", "end_date", "notice_period_days", "auto_renew", "due_date", "valid_until",
+  "entry_date", "paid_on", "paid_date", "chosen", "active", "dispute_reason", "notes", "file_path", "reference", "source",
+  "created_by", "recorded_by",
+];
+const rank = (k: string) => {
+  const i = ORDER.indexOf(k);
+  return i >= 0 ? i : k.endsWith("_at") ? ORDER.length + 1 : ORDER.length;
+};
 
 export function fieldLabel(key: string) {
   return FIELD_LABELS[key] ?? key.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
@@ -115,7 +131,7 @@ export function formatValue(key: string, value: unknown, lk: Lookups, currency =
     case "vat_rate": return `${Number(v)} %`;
     case "notice_period_days": return `${v} days`;
     case "status": case "billing_frequency": case "method": case "source": case "channel":
-      return v.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+      return STATUS_LABELS[v] ?? v.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
   }
   if (DATE_KEYS.test(key) && /^\d{4}-\d{2}-\d{2}$/.test(v)) {
     return new Date(`${v}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -130,7 +146,7 @@ export function formatValue(key: string, value: unknown, lk: Lookups, currency =
 export function visibleKeys(...records: (Record<string, unknown> | null)[]) {
   const keys = new Set<string>();
   for (const r of records) for (const k of Object.keys(r ?? {})) if (!HIDDEN.has(k)) keys.add(k);
-  return [...keys];
+  return [...keys].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
 }
 
 export function changedKeys(oldData: Record<string, unknown> | null, newData: Record<string, unknown> | null) {
@@ -153,7 +169,7 @@ export function summarise(row: AuditRow, lk: Lookups, currency = "EUR"): string 
     if (to === "paid") return `Marked as paid on ${formatValue("paid_date", row.new_data?.paid_date, lk, currency)}`;
     if (to === "disputed") return "Disputed the invoice";
     if (to === "approved" && row.old_data?.status === "received") return "Invoice fully approved";
-    if (row.old_data?.status === "disputed") return "Reopened the dispute";
+    if (row.old_data?.status === "disputed") return "Dispute resolved";
     if (to === "received") return "Sent back for approval";
   }
   if (status) return `Status changed to ${formatValue("status", row.new_data?.status, lk, currency)}`;

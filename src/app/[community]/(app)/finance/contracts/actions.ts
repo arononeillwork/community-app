@@ -6,7 +6,7 @@ import { requireFinance } from "@/lib/community";
 import { createClient } from "@/lib/supabase/server";
 import { parseEurosToCents, todayInput } from "@/lib/format";
 import { FREQUENCIES, isDate } from "@/components/finance-ops/dates";
-import { uploadFinanceFile } from "@/components/finance-ops/storage";
+import { removeFinanceFiles, uploadFinanceFile } from "@/components/finance-ops/storage";
 
 export type ContractFormState = { error?: string; values?: Record<string, string> } | undefined;
 
@@ -66,13 +66,23 @@ export async function saveContract(slug: string, id: string | null, _prev: Contr
   const vat = vatRaw === "" ? 21 : Number(vatRaw);
   if (!Number.isFinite(vat) || vat < 0 || vat > 100) return fail("VAT must be a percentage between 0 and 100.");
 
+  // The file currently linked to the contract, so it can be removed once it is replaced or unlinked.
+  let oldFile: string | null = null;
+  if (id) {
+    const { data: existing } = await supabase.from("contracts").select("id, file_path").eq("community_id", c).eq("id", id).maybeSingle();
+    if (!existing) return fail("This contract was not found. It may have been removed.");
+    oldFile = existing.file_path;
+  }
+
   const upload = await uploadFinanceFile(c, "contracts", form.get("file"));
   if (upload.error) return fail(upload.error);
+  // Anything that fails from here on must not leave the new upload behind.
+  const failAfterUpload = async (error: string) => { await removeFinanceFiles([upload.path]); return fail(error); };
 
   if (supplierId === "new") {
     const { data, error } = await supabase.from("suppliers")
       .insert({ community_id: c, name: newName, service_type: newService }).select("id").single();
-    if (error || !data) return fail("The new supplier could not be saved. Please try again.");
+    if (error || !data) return failAfterUpload("The new supplier could not be saved. Please try again.");
     supplierId = data.id;
     // A contract made from a quote with a free-text supplier: link that quote to the new supplier.
     const quoteId = text(form, "quote_id", 64);
@@ -102,10 +112,11 @@ export async function saveContract(slug: string, id: string | null, _prev: Contr
   let savedId = id;
   if (id) {
     const { data, error } = await supabase.from("contracts").update(record).eq("community_id", c).eq("id", id).select("id").maybeSingle();
-    if (error || !data) return fail("The contract could not be saved. Please try again.");
+    if (error || !data) return failAfterUpload("The contract could not be saved. Please try again.");
+    if (oldFile && "file_path" in record && record.file_path !== oldFile) await removeFinanceFiles([oldFile]);
   } else {
     const { data, error } = await supabase.from("contracts").insert({ ...record, community_id: c, status: "active" }).select("id").single();
-    if (error || !data) return fail("The contract could not be saved. Please try again.");
+    if (error || !data) return failAfterUpload("The contract could not be saved. Please try again.");
     savedId = data.id;
   }
 

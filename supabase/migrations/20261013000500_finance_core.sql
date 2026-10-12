@@ -66,3 +66,16 @@ create policy "finance delete invoice files" on storage.objects for delete using
   and split_part(name, '/', 2) = 'invoices'
   and public.is_finance(public.path_community(name))
 );
+
+-- ---------------------------------------------------------------------------
+-- 5. Masked IBAN as a computed column (suppliers.iban_masked in the API)
+-- ---------------------------------------------------------------------------
+-- Supplier pages show only the last four characters and fetch the full IBAN on request. Selecting
+-- iban_masked instead of iban keeps the full number out of the page entirely (including dev debug data).
+-- Runs as the caller, so the suppliers RLS (finance roles only) still applies.
+create or replace function public.iban_masked(s public.suppliers)
+returns text language sql stable set search_path = '' as $$
+  select case when coalesce(s.iban, '') = '' then null
+    else left(regexp_replace(upper(s.iban), '[^A-Z0-9]', '', 'g'), 2) || '•• •••• '
+      || right(regexp_replace(upper(s.iban), '[^A-Z0-9]', '', 'g'), 4) end
+$$;

@@ -53,6 +53,7 @@ export default async function ReportsPage({ params }: { params: Promise<{ commun
         dateKey="created_at"
         defaultSort={{ key: "created_at", desc: true }}
         exportName="reports"
+        timeZone={s.community.timezone}
         searchPlaceholder="Search reports…"
         empty="No reports yet."
         views={[

@@ -19,7 +19,6 @@ export default function AddTenantForm({ action, units, unitId, today, needsAppro
 
   return (
     <form {...formProps} className="flex flex-col gap-5">
-      {state?.error && <Notice tone="bad">{state.error}</Notice>}
 
       <Card className="flex flex-col gap-4">
         <h2 className="text-[1.0625rem] font-semibold">Who is moving in?</h2>
@@ -83,7 +82,11 @@ export default function AddTenantForm({ action, units, unitId, today, needsAppro
           : "Your tenant can sign in as soon as they open the invitation email."}
       </Notice>
 
-      <SubmitButton pending={pending} size="lg" pendingText="Adding…" className="w-full sm:w-auto sm:self-end sm:px-8">Add tenant and send invitation</SubmitButton>
+      {/* The error sits next to the button, where the person is looking when they press it. */}
+      <div className="flex flex-col">
+        <div aria-live="polite">{state?.error && <div className="mb-3"><Notice tone="bad">{state.error}</Notice></div>}</div>
+        <SubmitButton pending={pending} size="lg" pendingText="Adding…" className="w-full sm:w-auto sm:self-end sm:px-8">Add tenant and send invitation</SubmitButton>
+      </div>
     </form>
   );
 }

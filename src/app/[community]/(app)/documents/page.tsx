@@ -18,10 +18,19 @@ function cleanQuery(q: string) {
   return q.replace(/[%_\\,()"'*:;.]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
 }
 
+/** The text as one line for search snippets: headings end with a colon, list markers are dropped, lines end with a stop. */
+function flatten(text: string) {
+  return text.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
+    if (/^#+\s+/.test(l)) return `${l.replace(/^#+\s+/, "").replace(/:$/, "")}:`;
+    const t = l.replace(/^[•\-–*]\s+/, "");
+    return /[.:;!?…)]$/.test(t) ? t : `${t}.`;
+  }).join(" ").replace(/\s+/g, " ");
+}
+
 /** A short piece of text around the first match, with the match marked. */
 function snippet(text: string | null | undefined, term: string) {
   if (!text || !term) return null;
-  const flat = text.replace(/^#+\s+/gm, "").replace(/\s+/g, " ");
+  const flat = flatten(text);
   const i = flat.toLowerCase().indexOf(term.toLowerCase());
   if (i < 0) return null;
   const start = Math.max(0, flat.lastIndexOf(" ", Math.max(0, i - 50)) + 1);
@@ -111,7 +120,7 @@ export default async function DocumentsPage({ params, searchParams }: {
               <label htmlFor="q" className="!text-sm !text-muted">Search documents</label>
               <div className="relative">
                 <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-[1.1rem] -translate-y-1/2 text-muted" />
-                <input id="q" name="q" type="search" defaultValue={term} className="input pl-10" placeholder="e.g. pool, insurance, minutes" />
+                <input id="q" name="q" type="search" defaultValue={term} className="input pl-10" placeholder="e.g. pool, insurance" />
               </div>
             </div>
             {folder && <input type="hidden" name="folder" value={folder} />}
@@ -167,13 +176,13 @@ export default async function DocumentsPage({ params, searchParams }: {
                               {sn && (
                                 <span className="mt-0.5 block text-sm text-ink-2">
                                   {sn.lang && <span className="text-muted">{languageLabel(sn.lang)}: </span>}
-                                  {sn.before}<mark className="rounded bg-warn-soft px-0.5 text-ink">{sn.match}</mark>{sn.after}
+                                  {sn.before}<mark className="rounded-sm bg-warn-soft text-ink">{sn.match}</mark>{sn.after}
                                 </span>
                               )}
-                              <span className="block text-sm text-muted sm:hidden">{date(d.created_at)} · {fileWords}</span>
+                              <span className="block text-sm text-muted sm:hidden">{date(d.created_at, s.community.timezone)} · {fileWords}</span>
                             </span>
                             <span className="hidden shrink-0 text-right text-sm text-muted sm:block">
-                              <span className="block">{date(d.created_at)}</span>
+                              <span className="block">{date(d.created_at, s.community.timezone)}</span>
                               <span className="block">{fileWords}</span>
                             </span>
                             <ChevronRight aria-hidden className="size-4 shrink-0 text-muted transition-transform group-hover:translate-x-0.5" />

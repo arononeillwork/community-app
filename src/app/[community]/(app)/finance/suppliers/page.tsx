@@ -52,7 +52,9 @@ export default async function SuppliersPage({ params, searchParams }: {
   const rows = all.filter((x) => x.active !== showInactive);
 
   const columns: Column[] = [
-    { key: "name", header: "Supplier", href: `${base}/{id}`, subKey: "service_type", primary: true },
+    // Not marked primary: that forces a 13rem column and pushes Contracts out of view at laptop width.
+    // As the first column it is still the phone card title.
+    { key: "name", header: "Supplier", href: `${base}/{id}`, subKey: "service_type" },
     { key: "phone", header: "Contact", subKey: "contact_name" },
     { key: "email", header: "Email", mobileHidden: true },
     { key: "spend_year", header: "This year", type: "money", total: true },

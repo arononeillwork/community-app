@@ -69,7 +69,7 @@ export default function ScheduleForm({ slug, year, budgets, flats, previous, can
         {method === "coefficient" ? (
           <div className="field">
             <label htmlFor="annual_total">Total to collect in the year (€)</label>
-            <input id="annual_total" name="annual_total" inputMode="decimal" className="input tabular" required value={annual} onChange={(e) => setAnnual(e.target.value)} placeholder="112600.00" aria-describedby="amount_hint" />
+            <input id="annual_total" name="annual_total" inputMode="decimal" className="input tabular" required value={annual} onChange={(e) => setAnnual(e.target.value)} placeholder="60000.00" aria-describedby="amount_hint" />
             <p id="amount_hint" className="hint">
               {budgets[y] ? `Prefilled with the ${y} budget total. ` : latest ? `There is no ${y} budget yet, so this is the ${latest} total. ` : ""}{preview}
             </p>

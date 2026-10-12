@@ -43,6 +43,27 @@ begin;
 select pg_temp.login('owner4@oceanagardens.test');
 select pg_temp.check((select count(*) from v_invoice_list) = 0, 'owner cannot read the invoice list');
 select pg_temp.check((select count(*) from audit_log) = 0, 'owner cannot read the audit log');
+select pg_temp.check((select count(*) from suppliers) = 0, 'owner cannot read suppliers (bank details)');
+select pg_temp.check((select count(*) from invoices) = 0, 'owner cannot read invoices');
+rollback;
+
+begin;
+select pg_temp.login('tenant1@oceanagardens.test');
+select pg_temp.check((select count(*) from suppliers) = 0, 'tenant cannot read suppliers (bank details)');
+select pg_temp.check((select count(*) from storage.objects where bucket_id = 'finance') = 0, 'tenant cannot list finance files');
+rollback;
+
+-- Another community's admin cannot approve an Oceana invoice through the RPC.
+begin;
+select set_config('test.inv', (select id::text from invoices where invoice_number = 'RR-1229'), true);
+select pg_temp.login('admin@demoheights.test');
+do $$ begin
+  perform approve_invoice(current_setting('test.inv')::uuid);
+  raise exception 'FAIL: another community approved an Oceana invoice';
+exception when raise_exception then
+  if sqlerrm like 'FAIL%' then raise; end if;
+end $$;
+select pg_temp.check(true, 'another community''s admin cannot approve an Oceana invoice');
 rollback;
 
 -- ---------------------------------------------------------------- other community
@@ -69,6 +90,8 @@ select pg_temp.check((select count(*) from complaints where target_supplier_id i
   'treasurer cannot read residents'' complaints directly');
 select pg_temp.check((select count(*) from supplier_reports((select id from suppliers where name = 'LimpiaMax Servicios'))) = 2,
   'treasurer sees the reports about a supplier (title and status only)');
+select pg_temp.check((select iban_masked(s) from suppliers s where name = 'Fontanería Benítez') = 'ES•• •••• 4567',
+  'the masked IBAN shows only the country and the last four characters');
 rollback;
 
 -- ---------------------------------------------------------------- approvals follow the amount
@@ -206,17 +229,18 @@ end $$;
 select pg_temp.check(true, 'another community cannot delete Oceana finance files');
 rollback;
 
+-- (finance_ops adds its own delete policy for contracts/ and quotes/; "statements/" is covered by neither.)
 begin;
 insert into storage.objects (bucket_id, name) values
   ('finance', '0cea0a00-0000-4000-8000-000000000001/invoices/00000000-0000-4000-8000-000000000000-test.pdf'),
-  ('finance', '0cea0a00-0000-4000-8000-000000000001/contracts/00000000-0000-4000-8000-000000000000-test.pdf');
+  ('finance', '0cea0a00-0000-4000-8000-000000000001/statements/00000000-0000-4000-8000-000000000000-test.pdf');
 set local storage.allow_delete_query = 'true';
 select pg_temp.login('treasurer@oceanagardens.test');
 delete from storage.objects where bucket_id = 'finance' and name like '%-test.pdf';
 select pg_temp.check((select count(*) from storage.objects where bucket_id = 'finance' and name like '%/invoices/%-test.pdf') = 0,
   'finance users can delete invoice attachments');
-select pg_temp.check((select count(*) from storage.objects where bucket_id = 'finance' and name like '%/contracts/%-test.pdf') = 1,
-  'but not other finance files');
+select pg_temp.check((select count(*) from storage.objects where bucket_id = 'finance' and name like '%/statements/%-test.pdf') = 1,
+  'but not files in other finance folders');
 rollback;
 
 \echo 'finance core tests passed'

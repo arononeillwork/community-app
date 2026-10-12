@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useActionState, useState, type FormEvent, type ReactNode } from "react";
+import { startTransition, useActionState, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import clsx from "clsx";
 import { Notice, buttonClass } from "@/components/ui";
@@ -71,18 +71,28 @@ export function ConfirmAction({ action, label, question, confirmLabel, cancelLab
   action: () => Promise<void>; label: string; question: string; confirmLabel: string; cancelLabel?: string; icon?: ReactNode;
 }) {
   const [asking, setAsking] = useState(false);
+  const questionId = useId();
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const openerRef = useRef<HTMLButtonElement>(null);
+  const wasAsking = useRef(false);
+  // Keep keyboard focus on the question while it is open, and back on the button after "Keep it".
+  useEffect(() => {
+    if (asking) cancelRef.current?.focus();
+    else if (wasAsking.current) openerRef.current?.focus();
+    wasAsking.current = asking;
+  }, [asking]);
   if (!asking) {
     return (
-      <button type="button" onClick={() => setAsking(true)} className={buttonClass("ghost", "sm", "text-bad hover:text-bad")}>
+      <button ref={openerRef} type="button" onClick={() => setAsking(true)} className={buttonClass("ghost", "sm", "text-bad hover:text-bad")}>
         {icon}{label}
       </button>
     );
   }
   return (
-    <form action={action} className="flex w-full flex-wrap items-center gap-2 rounded-xl bg-bad-soft px-3 py-2 sm:w-auto">
-      <span className="text-[0.9375rem] text-bad">{question}</span>
+    <form action={action} role="group" aria-labelledby={questionId} className="flex w-full flex-wrap items-center gap-2 rounded-xl bg-bad-soft px-3 py-2 sm:w-auto">
+      <span id={questionId} className="text-[0.9375rem] text-bad">{question}</span>
       <span className="ml-auto flex gap-2">
-        <button type="button" onClick={() => setAsking(false)} className={buttonClass("ghost", "sm")}>{cancelLabel}</button>
+        <button ref={cancelRef} type="button" onClick={() => setAsking(false)} className={buttonClass("ghost", "sm")}>{cancelLabel}</button>
         <SubmitButton variant="danger" size="sm" pendingText="Ending…">{confirmLabel}</SubmitButton>
       </span>
     </form>
