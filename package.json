@@ -11,6 +11,7 @@
     "db:test": "psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -q -f supabase/tests/rls_test.sql"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.2",
     "@tanstack/react-table": "^8.21.3",

@@ -81,7 +81,7 @@ export default async function HomePage({ params }: { params: Promise<{ community
       </div>
 
       {/* Today */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,17rem),1fr))] gap-4">
         <Card className="flex flex-col">
           <SectionHeader icon={Trash2} title="Bins tomorrow" description={WEEKDAYS[tomorrow.getDay()]} />
           <ul className="flex flex-col gap-2">
@@ -132,17 +132,17 @@ export default async function HomePage({ params }: { params: Promise<{ community
         </Card>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2" padded={false}>
+      <div className="flex flex-wrap gap-4">
+        <Card className="min-w-0 flex-[2_1_30rem]" padded={false}>
           <div className="p-5 pb-1 sm:p-6 sm:pb-1">
             <SectionHeader icon={Contact} title="Who to call" description="The people residents need most often"
               action={<Button href={`${base}/contacts`} variant="ghost" size="sm">All contacts</Button>} />
           </div>
           <ul className="divide-y divide-line">
             {pick.map((k) => (
-              <li key={k.id} className="flex items-center gap-3 px-5 py-3 sm:px-6">
+              <li key={k.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-3 sm:px-6">
                 <Avatar name={k.name ?? k.organisation ?? k.role_title} />
-                <div className="min-w-0 flex-1">
+                <div className="min-w-[min(100%,9rem)] flex-1">
                   <div className="text-sm text-muted">{k.role_title}</div>
                   <div className="truncate font-medium text-ink">{k.name ?? k.organisation}</div>
                   {k.hours && <div className="truncate text-sm text-muted">{k.hours}</div>}
@@ -153,7 +153,7 @@ export default async function HomePage({ params }: { params: Promise<{ community
           </ul>
         </Card>
 
-        <Card className="flex flex-col">
+        <Card className="flex min-w-0 flex-[1_1_17rem] flex-col">
           <SectionHeader icon={Users} title={s.isAdmin ? "Members" : myBlocks.length > 1 ? "Your blocks" : "Your block"} />
           {s.isAdmin || myBlocks.length ? (
             <ul className="flex flex-col gap-2">
@@ -165,7 +165,8 @@ export default async function HomePage({ params }: { params: Promise<{ community
               ))}
             </ul>
           ) : <p className="text-[0.9375rem] text-muted">You&apos;re not linked to a flat yet. The office can add you.</p>}
-          <Link href={`${base}/members`} className="mt-auto inline-flex items-center gap-1 pt-4 text-sm font-medium no-underline hover:underline">
+          <Link href={!s.isAdmin && myBlocks.length === 1 ? `${base}/members?block=${myBlocks[0].building_id}` : `${base}/members`}
+            className="mt-auto inline-flex items-center gap-1 pt-4 text-sm font-medium no-underline hover:underline">
             {s.isAdmin ? "Open the member list" : "See your neighbours"} <ArrowRight aria-hidden className="size-3.5" />
           </Link>
         </Card>
@@ -174,7 +175,7 @@ export default async function HomePage({ params }: { params: Promise<{ community
       {notices.length > 0 && (
         <Card>
           <SectionHeader icon={Megaphone} title="Notices" />
-          <ul className="grid gap-3 sm:grid-cols-2">
+          <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-3">
             {notices.map((n) => (
               <li key={n.title} className="rounded-xl bg-surface-2 p-4">
                 <div className="text-sm text-muted">{date(n.date)}</div>
@@ -188,7 +189,7 @@ export default async function HomePage({ params }: { params: Promise<{ community
 
       <section aria-labelledby="explore">
         <h2 id="explore" className="mb-3 text-[1.0625rem] font-semibold">Explore {s.community.name}</h2>
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,17rem),1fr))] gap-3">
           {shortcuts.map((x) => (
             <li key={x.href}>
               <Link href={x.href} className="group flex h-full items-center gap-3.5 rounded-card border border-line bg-surface p-4 text-ink no-underline shadow-card transition-colors hover:border-brand-line">

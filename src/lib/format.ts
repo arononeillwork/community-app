@@ -8,10 +8,12 @@ export function moneyShort(cents: number | null | undefined, currency = "EUR", l
   return new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: 0 }).format(cents / 100);
 }
 
-export function date(d: string | Date | null | undefined, locale = "en-GB") {
+/** A calendar date. Date-only strings ("2026-10-05") are shown as written; timestamps in `timeZone`. */
+export function date(d: string | Date | null | undefined, timeZone?: string, locale = "en-GB") {
   if (!d) return "–";
-  const v = typeof d === "string" ? new Date(d.length === 10 ? d + "T00:00:00" : d) : d;
-  return v.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" });
+  const dateOnly = typeof d === "string" && d.length === 10;
+  const v = typeof d === "string" ? new Date(dateOnly ? d + "T00:00:00Z" : d) : d;
+  return v.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric", timeZone: dateOnly ? "UTC" : timeZone });
 }
 
 export function dateTime(d: string | Date | null | undefined, timeZone = "Europe/Madrid", locale = "en-GB") {

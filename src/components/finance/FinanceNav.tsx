@@ -20,7 +20,7 @@ export default function FinanceNav({ slug }: { slug: string }) {
   const path = usePathname();
   const base = `/${slug}/finance`;
   return (
-    <nav aria-label="Finance sections" className="no-print -mx-1 mb-6 flex gap-1 overflow-x-auto border-b border-line px-1">
+    <nav aria-label="Finance sections" className="no-print scroll-quiet -mx-1 mb-6 flex gap-1 overflow-x-auto border-b border-line px-1 max-md:pr-8 max-md:[mask-image:linear-gradient(to_right,black_calc(100%-2.5rem),transparent)]">
       {TABS.map((t) => {
         const href = base + t.path;
         const on = t.path === "" ? path === base : path === href || path.startsWith(href + "/");

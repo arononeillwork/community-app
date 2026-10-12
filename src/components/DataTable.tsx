@@ -31,6 +31,12 @@ export type Column = {
   mobileHidden?: boolean;
   /** Secondary line under the value (key of another field). */
   subKey?: string;
+  /** CSV header for the secondary line; when set, the export gets its own column for it. */
+  subHeader?: string;
+  /** Keep the value on one line (phone numbers, invoice numbers). */
+  nowrap?: boolean;
+  /** Not shown on screen, but searched and exported. */
+  hidden?: boolean;
 };
 
 export type SavedView = { label: string; params: Record<string, string> };
@@ -182,15 +188,19 @@ export default function DataTable({
   }
 
   const isNum = (c: Column) => c.type === "money" || c.type === "number" || c.type === "percent";
+  const shown = columns.filter((c) => !c.hidden);
 
   function exportCsv() {
     const esc = (s: unknown) => `"${String(s ?? "").replace(/"/g, '""')}"`;
-    const lines = [columns.map((c) => esc(c.header)).join(",")];
+    const cell = (c: Column, v: unknown) => {
+      if (c.type === "money") return v == null ? "" : (Number(v) / 100).toFixed(2);
+      return esc(Array.isArray(v) ? v.join("; ") : v);
+    };
+    const lines = [columns.flatMap((c) => (c.subKey && c.subHeader ? [esc(c.header), esc(c.subHeader)] : [esc(c.header)])).join(",")];
     for (const r of table.getSortedRowModel().rows) {
-      lines.push(columns.map((c) => {
-        const v = r.original[c.key];
-        if (c.type === "money") return v == null ? "" : (Number(v) / 100).toFixed(2);
-        return esc(Array.isArray(v) ? v.join("; ") : v);
+      lines.push(columns.flatMap((c) => {
+        const main = cell(c, r.original[c.key]);
+        return c.subKey && c.subHeader ? [main, esc(r.original[c.subKey])] : [main];
       }).join(","));
     }
     const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
@@ -232,7 +242,7 @@ export default function DataTable({
 
       {/* Filter bar */}
       <div className="no-print flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
-        <div className="field min-w-[14rem] flex-1">
+        <div className="field min-w-[min(100%,14rem)] flex-1">
           <label htmlFor={`${id}search`} className="!text-sm !text-muted">Search</label>
           <div className="relative">
             <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-[1.1rem] -translate-y-1/2 text-muted" />
@@ -243,7 +253,7 @@ export default function DataTable({
         {filterCols.map((c) => {
           const values = Array.from(new Set(rows.map((r) => r[c.key]).filter((v) => v != null && v !== "").map(String))).sort();
           return (
-            <div key={c.key} className="field min-w-[10rem]">
+            <div key={c.key} className="field min-w-[min(100%,10rem)] flex-1 sm:flex-none">
               <label htmlFor={`${id}f_${c.key}`} className="!text-sm !text-muted">{c.header}</label>
               <select id={`${id}f_${c.key}`} className="input" value={active[c.key] ?? ""} onChange={(e) => update({ [`f_${c.key}`]: e.target.value })}>
                 <option value="">All</option>
@@ -253,14 +263,14 @@ export default function DataTable({
           );
         })}
         {dateKey && (
-          <div className="field min-w-[10rem]">
+          <div className="field min-w-[min(100%,10rem)] flex-1 sm:flex-none">
             <label htmlFor={`${id}range`} className="!text-sm !text-muted">Date</label>
             <select id={`${id}range`} className="input" value={range} onChange={(e) => update({ range: e.target.value })}>
               {RANGES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
             </select>
           </div>
         )}
-        <div className="flex gap-2 lg:ml-auto">
+        <div className="flex flex-wrap gap-2 lg:ml-auto">
           <button type="button" onClick={exportCsv} className={smallBtn} title="Download the rows shown as a spreadsheet (CSV)">
             <Download aria-hidden className="size-4" /> Export
           </button>
@@ -293,11 +303,11 @@ export default function DataTable({
         <>
           {/* Desktop / tablet table */}
           <div className="card hidden overflow-hidden rounded-card border border-line bg-surface shadow-card md:block">
-            <div className="overflow-x-auto">
+            <div className="relative overflow-x-auto">
               <table className="w-full border-collapse text-left">
                 <thead className="bg-surface-2">
                   <tr className="border-b border-line">
-                    {columns.map((c) => {
+                    {shown.map((c) => {
                       const on = sortKey === c.key;
                       return (
                         <th key={c.key} scope="col" aria-sort={on ? (sortDesc ? "descending" : "ascending") : "none"}
@@ -318,8 +328,8 @@ export default function DataTable({
                 <tbody>
                   {pageRows.map((row) => (
                     <tr key={row.id} className="border-b border-line transition-colors last:border-0 hover:bg-surface-2/70">
-                      {columns.map((c) => (
-                        <td key={c.key} className={clsx("px-4 py-3 align-top text-[0.9375rem] text-ink-2", c.primary && "min-w-[13rem]", isNum(c) && "tabular whitespace-nowrap text-right", c.type === "date" && "whitespace-nowrap")}>
+                      {shown.map((c) => (
+                        <td key={c.key} className={clsx("px-4 py-3 align-top text-[0.9375rem] text-ink-2", c.primary && "min-w-[13rem]", c.nowrap && "whitespace-nowrap", isNum(c) && "tabular whitespace-nowrap text-right", c.type === "date" && "whitespace-nowrap")}>
                           {renderCell(c, row.original)}
                         </td>
                       ))}
@@ -329,7 +339,7 @@ export default function DataTable({
                 {Object.keys(totals).length > 0 && (
                   <tfoot>
                     <tr className="border-t border-line bg-surface-2 font-semibold text-ink">
-                      {columns.map((c, i) => (
+                      {shown.map((c, i) => (
                         <td key={c.key} className={clsx("px-4 py-3 text-[0.9375rem]", isNum(c) && "tabular whitespace-nowrap text-right")}>
                           {c.key in totals ? (c.type === "money" ? fmtMoney.format(totals[c.key] / 100) : totals[c.key].toLocaleString("en-GB"))
                             : i === 0 ? `Total (${visible.length})` : ""}
@@ -345,12 +355,12 @@ export default function DataTable({
           {/* Phone: stacked cards */}
           <ul className="flex flex-col gap-2.5 md:hidden">
             {pageRows.map((row) => {
-              const primary = columns.find((c) => c.primary) ?? columns[0];
+              const primary = shown.find((c) => c.primary) ?? shown[0];
               return (
                 <li key={row.id} className="card rounded-card border border-line bg-surface p-4 shadow-card">
                   <div className="mb-2 font-medium">{renderCell(primary, row.original)}</div>
                   <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-[0.9375rem]">
-                    {columns.filter((c) => c !== primary && !c.mobileHidden).map((c) => (
+                    {shown.filter((c) => c !== primary && !c.mobileHidden).map((c) => (
                       <div key={c.key} className="contents">
                         <dt className="text-muted">{c.header}</dt>
                         <dd className={clsx("min-w-0 text-ink-2", isNum(c) && "tabular")}>{renderCell(c, row.original)}</dd>
@@ -362,7 +372,7 @@ export default function DataTable({
             })}
             {Object.keys(totals).length > 0 && (
               <li className="rounded-card border border-brand-line bg-brand-soft p-4 font-semibold">
-                {columns.filter((c) => c.key in totals).map((c) => (
+                {shown.filter((c) => c.key in totals).map((c) => (
                   <div key={c.key} className="flex justify-between"><span>Total {c.header.toLowerCase()}</span>
                     <span className="tabular">{c.type === "money" ? fmtMoney.format(totals[c.key] / 100) : totals[c.key]}</span></div>
                 ))}
@@ -376,14 +386,14 @@ export default function DataTable({
               Showing <span className="font-medium text-ink">{pageRows.length}</span> of <span className="font-medium text-ink">{visible.length}</span>
               {visible.length !== rows.length && <> (filtered from {rows.length})</>}
             </p>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
               <label className="flex items-center gap-2">
                 <span>Rows</span>
                 <select className="input !min-h-10 w-auto !py-1" value={pageSize} onChange={(e) => update({ size: e.target.value })}>
                   {[10, 25, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
                 </select>
               </label>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <button type="button" disabled={page === 0} onClick={() => update({ page: String(page) })} className={clsx(smallBtn, "disabled:opacity-40")}>
                   ← Previous
                 </button>

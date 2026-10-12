@@ -41,7 +41,7 @@ export async function signInWithPassword(slug: string, _prev: LoginState, form: 
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error || !data.user) return { error: "That email and password did not match. Please try again." };
   if (!(await assertMember(slug))) {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "local" });
     return { error: "You're not registered in this community. Please contact the administrator." };
   }
   await syncPrefCookies(data.user.id);
@@ -64,6 +64,6 @@ export async function sendMagicLink(slug: string, _prev: LoginState, form: FormD
 
 export async function signOut(slug: string) {
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  await supabase.auth.signOut({ scope: "local" });
   redirect(`/${slug}`);
 }

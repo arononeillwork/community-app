@@ -143,6 +143,7 @@ html.hc {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    overflow-wrap: break-word;
   }
 
   h1, h2, h3, h4 { color: var(--ink); font-weight: 600; letter-spacing: -0.015em; text-wrap: balance; }

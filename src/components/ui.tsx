@@ -235,7 +235,7 @@ export function DefinitionList({ items, className }: { items: { label: ReactNode
 /** Pill tabs for switching between sibling pages or filters (links, so they work without JS). */
 export function TabLinks({ tabs, label }: { tabs: { href: string; label: ReactNode; active?: boolean; count?: number }[]; label: string }) {
   return (
-    <nav aria-label={label} className="no-print -mx-1 mb-6 flex gap-1 overflow-x-auto px-1 pb-1">
+    <nav aria-label={label} className="no-print -mx-1 mb-6 flex flex-wrap gap-1 px-1">
       {tabs.map((t) => (
         <Link key={t.href} href={t.href} aria-current={t.active ? "page" : undefined}
           className={clsx("inline-flex shrink-0 items-center gap-2 rounded-full px-3.5 py-1.5 text-[0.9375rem] font-medium no-underline transition-colors",
@@ -264,7 +264,7 @@ export const STATUS_TONES: Record<string, Tone> = {
 };
 
 export const STATUS_LABELS: Record<string, string> = {
-  in_progress: "In progress", on_agenda: "On agenda", not_attending: "Not attending",
+  in_progress: "In progress", on_agenda: "On agenda", not_attending: "Not attending", received: "Awaiting approval",
   long_term: "Long-term", short_term: "Short-term", holiday_let: "Holiday let", common_area: "Common area",
   due_soon: "Due soon", agm: "AGM",
 };
