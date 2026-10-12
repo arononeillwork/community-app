@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Languages } from "lucide-react";
 
 const SIZES = [100, 125, 150, 175, 200];
 const LANG_NAMES: Record<string, string> = {
@@ -30,19 +31,19 @@ export default function QuickControls({ languages, current }: { languages: strin
     document.documentElement.style.fontSize = `${next}%`;
   }
 
+  const btn = "grid size-9 place-items-center rounded-lg text-ink-2 hover:bg-surface-2 hover:text-ink disabled:opacity-35";
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <div className="flex items-center gap-1 rounded-xl border-2 border-line bg-surface p-1" role="group" aria-label="Text size">
-        <button type="button" onClick={() => changeSize(-1)} disabled={size === SIZES[0]}
-          className="min-h-11 min-w-11 rounded-lg px-2 text-base font-bold hover:bg-bg disabled:opacity-40" aria-label="Smaller text">A−</button>
-        <span className="px-1 text-sm font-bold tabular" aria-live="polite">{size}%</span>
-        <button type="button" onClick={() => changeSize(1)} disabled={size === SIZES[SIZES.length - 1]}
-          className="min-h-11 min-w-11 rounded-lg px-2 text-xl font-bold hover:bg-bg disabled:opacity-40" aria-label="Larger text">A+</button>
+    <div className="flex items-center gap-2">
+      <div className="flex items-center rounded-[10px] border border-line bg-surface p-0.5" role="group" aria-label="Text size">
+        <button type="button" onClick={() => changeSize(-1)} disabled={size === SIZES[0]} className={`${btn} text-sm`} aria-label="Smaller text" title="Smaller text">A</button>
+        <span className="sr-only" aria-live="polite">Text size {size}%</span>
+        <button type="button" onClick={() => changeSize(1)} disabled={size === SIZES[SIZES.length - 1]} className={`${btn} text-lg font-medium`} aria-label="Larger text" title="Larger text">A</button>
       </div>
       {languages.length > 1 && (
-        <label className="flex items-center gap-2">
+        <label className="relative flex items-center">
           <span className="sr-only">Language</span>
-          <select className="input w-auto min-h-12" value={current}
+          <Languages aria-hidden className="pointer-events-none absolute left-2.5 size-4 text-muted" />
+          <select className="input !min-h-10 w-auto !py-1 !pl-8 text-[0.9375rem]" value={current}
             onChange={(e) => { setCookie("lang", e.target.value); router.refresh(); }}>
             {languages.map((l) => <option key={l} value={l}>{LANG_NAMES[l] ?? l}</option>)}
           </select>

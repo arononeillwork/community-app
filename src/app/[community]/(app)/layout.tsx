@@ -1,62 +1,63 @@
-import Link from "next/link";
-import { Bell, Home, Settings } from "lucide-react";
 import { requireMember } from "@/lib/community";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "../login/actions";
-import NavLinks from "./NavLinks";
+import AppShell, { type NavGroup } from "@/components/shell/AppShell";
+
+const ROLE_NAMES: Record<string, string> = { admin: "Administrator", treasurer: "Treasurer", owner: "Owner", tenant: "Resident" };
 
 export default async function AppLayout({ children, params }: { children: React.ReactNode; params: Promise<{ community: string }> }) {
   const { community } = await params;
   const s = await requireMember(community);
   const supabase = await createClient();
-  const { count: unread } = await supabase.from("notifications").select("id", { count: "exact", head: true })
-    .eq("community_id", s.community.id).is("read_at", null);
   const base = `/${s.community.slug}`;
 
-  const links = [
-    { href: `${base}/home`, label: "Home" },
-    { href: `${base}/report`, label: "Report" },
-    { href: `${base}/meetings`, label: "Meetings" },
-    { href: `${base}/info`, label: "Bins & info" },
-    { href: `${base}/contacts`, label: "Contacts" },
-    ...(s.isOwner ? [{ href: `${base}/my-units`, label: "My flat" }] : []),
-    ...(s.isFinance ? [{ href: `${base}/finance`, label: "Finance" }] : []),
-    ...(s.isAdmin ? [{ href: `${base}/admin`, label: "Admin" }] : []),
+  const [{ count: unread }, newReports, { data: concierge }] = await Promise.all([
+    supabase.from("notifications").select("id", { count: "exact", head: true })
+      .eq("community_id", s.community.id).eq("profile_id", s.userId).is("read_at", null),
+    s.isAdmin
+      ? supabase.from("complaints").select("id", { count: "exact", head: true }).eq("community_id", s.community.id).eq("status", "new").then((r) => r.count ?? 0)
+      : Promise.resolve(0),
+    supabase.from("key_contacts").select("role_title, name, phone, hours")
+      .eq("community_id", s.community.id).eq("contact_group", "staff").is("building_id", null)
+      .not("phone", "is", null).order("sort").limit(1).maybeSingle(),
+  ]);
+
+  const groups: NavGroup[] = [
+    { items: [
+      { href: `${base}/home`, label: "Home", icon: "home", exact: true },
+      { href: `${base}/ask`, label: "Ask a question", icon: "ask" },
+    ] },
+    { label: "Community", items: [
+      { href: `${base}/report`, label: s.isAdmin ? "Reports" : "Report a problem", icon: "report", badge: newReports || undefined },
+      { href: `${base}/meetings`, label: "Meetings", icon: "meetings" },
+      { href: `${base}/info`, label: "Bins & info", icon: "info" },
+      { href: `${base}/local`, label: "Local area", icon: "local" },
+      { href: `${base}/documents`, label: "Documents", icon: "documents" },
+    ] },
+    { label: "People", items: [
+      { href: `${base}/members`, label: "Members", icon: "members" },
+      { href: `${base}/contacts`, label: "Key contacts", icon: "contacts" },
+    ] },
+    { label: "My home", items: [
+      ...(s.isOwner ? [{ href: `${base}/my-units`, label: "My flat", icon: "myflat" as const }] : []),
+      { href: `${base}/money`, label: "Where the money goes", icon: "money" },
+    ] },
+    ...(s.isFinance || s.isAdmin ? [{ label: "Management", items: [
+      ...(s.isFinance ? [{ href: `${base}/finance`, label: "Finance", icon: "finance" as const }] : []),
+      ...(s.isAdmin ? [{ href: `${base}/admin`, label: "Administration", icon: "admin" as const }] : []),
+    ] }] : []),
   ];
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded-lg focus:bg-surface focus:p-3 focus:font-bold">
-        Skip to content
-      </a>
-      <header className="sticky top-0 z-30 border-b border-line bg-surface/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2">
-          <Link href={`${base}/home`} className="flex items-center gap-3 no-underline text-ink">
-            {s.community.branding?.logo_url && <img src={s.community.branding.logo_url} alt="" className="size-10 rounded-xl" />}
-            <span className="text-lg font-bold">{s.community.name}</span>
-          </Link>
-          <div className="flex items-center gap-1">
-            <Link href={`${base}/home`} className="flex min-h-12 min-w-12 flex-col items-center justify-center rounded-xl px-2 text-xs font-bold no-underline text-ink hover:bg-bg sm:hidden">
-              <Home aria-hidden className="size-6" /> Home
-            </Link>
-            <Link href={`${base}/notifications`} className="relative flex min-h-12 min-w-12 flex-col items-center justify-center rounded-xl px-2 text-xs font-bold no-underline text-ink hover:bg-bg">
-              <Bell aria-hidden className="size-6" /> Alerts
-              {!!unread && <span className="absolute right-1 top-0 rounded-full bg-bad px-1.5 text-xs text-white">{unread}<span className="sr-only"> unread</span></span>}
-            </Link>
-            <Link href={`${base}/settings`} className="flex min-h-12 min-w-12 flex-col items-center justify-center rounded-xl px-2 text-xs font-bold no-underline text-ink hover:bg-bg">
-              <Settings aria-hidden className="size-6" /> Settings
-            </Link>
-            <form action={signOut.bind(null, s.community.slug)}>
-              <button className="ml-1 min-h-12 rounded-xl border-2 border-line px-3 text-sm font-bold hover:bg-bg">Sign out</button>
-            </form>
-          </div>
-        </div>
-        <NavLinks links={links} />
-      </header>
-      <main id="main" className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:py-8">{children}</main>
-      <footer className="border-t border-line bg-surface py-4 text-center text-sm text-muted">
-        Signed in as {s.fullName || s.email} · {s.roles.map((r) => r[0].toUpperCase() + r.slice(1)).join(", ")}
-      </footer>
-    </div>
+    <AppShell
+      community={{ name: s.community.name, slug: s.community.slug, logo: s.community.branding?.logo_url ?? null }}
+      user={{ name: s.fullName, email: s.email, roleLabel: s.roles.map((r) => ROLE_NAMES[r] ?? r).join(" · ") }}
+      groups={groups}
+      unread={unread ?? 0}
+      help={concierge?.phone ? { title: concierge.role_title, name: concierge.name, phone: concierge.phone, hours: concierge.hours } : null}
+      signOut={signOut.bind(null, s.community.slug)}
+    >
+      {children}
+    </AppShell>
   );
 }

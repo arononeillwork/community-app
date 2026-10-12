@@ -18,6 +18,7 @@ export async function syncPrefCookies(userId: string) {
   jar.set("a11y_hc", p.high_contrast ? "1" : "0", opts);
   jar.set("a11y_dys", p.dyslexia_font ? "1" : "0", opts);
   jar.set("a11y_rm", p.reduce_motion ? "1" : "0", opts);
+  jar.set("a11y_theme", p.theme, opts);
   jar.set("lang", p.language, opts);
 }
 

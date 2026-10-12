@@ -175,9 +175,9 @@ export default function DataTable({
     }
     if (c.href && v != null) {
       const href = c.href.replace(/\{(\w+)\}/g, (_, k) => String(r[k] ?? ""));
-      out = <Link href={href} className="font-bold text-brand underline-offset-4 hover:underline">{out}</Link>;
+      out = <Link href={href} className="font-medium text-brand-text no-underline underline-offset-4 hover:underline">{out}</Link>;
     }
-    if (c.subKey && r[c.subKey]) out = <div>{out}<div className="text-sm text-muted">{String(r[c.subKey])}</div></div>;
+    if (c.subKey && r[c.subKey]) out = <div>{out}<div className="text-[0.8125rem] text-muted">{String(r[c.subKey])}</div></div>;
     return out;
   }
 
@@ -206,20 +206,23 @@ export default function DataTable({
     ...(search ? [{ k: "q", text: `“${search}”` }] : []),
   ];
 
+  const smallBtn = "inline-flex min-h-10 items-center gap-2 rounded-[10px] border border-line-strong/60 bg-surface px-3.5 text-[0.9375rem] font-medium text-ink-2 shadow-card transition-colors hover:bg-surface-2 hover:text-ink";
+
   return (
     <div className="flex flex-col gap-4">
       {views.length > 0 && (
-        <div className="no-print flex flex-wrap gap-2" aria-label="Saved views">
+        <div className="no-print flex flex-wrap gap-1.5" role="group" aria-label="Saved views">
           {views.map((v) => {
             const on = Object.entries(v.params).every(([k, val]) => p(k) === val) && Object.keys(v.params).length > 0;
             return (
-              <button key={v.label} type="button" onClick={() => {
+              <button key={v.label} type="button" aria-pressed={on} onClick={() => {
                 const reset: Record<string, string | null> = { q: null, range: null, sort: null, dir: null };
                 filterCols.forEach((c) => (reset[`f_${c.key}`] = null));
                 setSearch(v.params.q ?? "");
                 update({ ...reset, ...v.params });
               }}
-                className={clsx("min-h-11 rounded-full border-2 px-4 font-bold", on ? "border-brand bg-brand text-brand-ink" : "border-line bg-surface hover:border-brand")}>
+                className={clsx("min-h-9 rounded-full px-3.5 text-[0.9375rem] font-medium transition-colors",
+                  on ? "bg-ink text-surface" : "bg-surface text-ink-2 ring-1 ring-inset ring-line hover:text-ink")}>
                 {v.label}
               </button>
             );
@@ -228,20 +231,20 @@ export default function DataTable({
       )}
 
       {/* Filter bar */}
-      <div className="no-print card flex flex-col gap-3 rounded-card border border-line bg-surface p-4 lg:flex-row lg:flex-wrap lg:items-end">
+      <div className="no-print flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
         <div className="field min-w-[14rem] flex-1">
-          <label htmlFor={`${id}search`}>Search</label>
+          <label htmlFor={`${id}search`} className="!text-sm !text-muted">Search</label>
           <div className="relative">
-            <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted" />
-            <input id={`${id}search`} className="input pl-10" value={search} placeholder={searchPlaceholder}
+            <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-[1.1rem] -translate-y-1/2 text-muted" />
+            <input id={`${id}search`} type="search" className="input pl-10" value={search} placeholder={searchPlaceholder}
               onChange={(e) => { setSearch(e.target.value); update({ q: e.target.value }); }} />
           </div>
         </div>
         {filterCols.map((c) => {
           const values = Array.from(new Set(rows.map((r) => r[c.key]).filter((v) => v != null && v !== "").map(String))).sort();
           return (
-            <div key={c.key} className="field min-w-[11rem]">
-              <label htmlFor={`${id}f_${c.key}`}>{c.header}</label>
+            <div key={c.key} className="field min-w-[10rem]">
+              <label htmlFor={`${id}f_${c.key}`} className="!text-sm !text-muted">{c.header}</label>
               <select id={`${id}f_${c.key}`} className="input" value={active[c.key] ?? ""} onChange={(e) => update({ [`f_${c.key}`]: e.target.value })}>
                 <option value="">All</option>
                 {values.map((v) => <option key={v} value={v}>{label(v)}</option>)}
@@ -250,19 +253,19 @@ export default function DataTable({
           );
         })}
         {dateKey && (
-          <div className="field min-w-[11rem]">
-            <label htmlFor={`${id}range`}>Date</label>
+          <div className="field min-w-[10rem]">
+            <label htmlFor={`${id}range`} className="!text-sm !text-muted">Date</label>
             <select id={`${id}range`} className="input" value={range} onChange={(e) => update({ range: e.target.value })}>
               {RANGES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
             </select>
           </div>
         )}
-        <div className="flex gap-2">
-          <button type="button" onClick={exportCsv} className="inline-flex min-h-12 items-center gap-2 rounded-xl border-2 border-line-strong bg-surface px-4 font-bold hover:bg-bg">
-            <Download aria-hidden className="size-5" /> Export
+        <div className="flex gap-2 lg:ml-auto">
+          <button type="button" onClick={exportCsv} className={smallBtn} title="Download the rows shown as a spreadsheet (CSV)">
+            <Download aria-hidden className="size-4" /> Export
           </button>
-          <button type="button" onClick={() => window.print()} className="inline-flex min-h-12 items-center gap-2 rounded-xl border-2 border-line-strong bg-surface px-4 font-bold hover:bg-bg">
-            <Printer aria-hidden className="size-5" /> Print
+          <button type="button" onClick={() => window.print()} className={smallBtn}>
+            <Printer aria-hidden className="size-4" /> Print
           </button>
         </div>
       </div>
@@ -271,11 +274,11 @@ export default function DataTable({
         <div className="no-print flex flex-wrap items-center gap-2" aria-label="Active filters">
           {chips.map((ch) => (
             <button key={ch.k} type="button" onClick={() => { if (ch.k === "q") setSearch(""); update({ [ch.k]: null }); }}
-              className="inline-flex min-h-10 items-center gap-1 rounded-full border border-brand bg-brand-soft px-3 font-bold text-ink">
-              {ch.text} <X aria-label="Remove filter" className="size-4" />
+              className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-brand-soft px-3 text-sm font-medium text-brand-text hover:brightness-95">
+              {ch.text} <X aria-label="Remove filter" className="size-3.5" />
             </button>
           ))}
-          <button type="button" className="min-h-10 px-2 font-bold text-brand underline" onClick={() => {
+          <button type="button" className="min-h-8 px-2 text-sm font-medium text-muted underline-offset-4 hover:text-ink hover:underline" onClick={() => {
             const reset: Record<string, null> = { q: null, range: null };
             filterCols.forEach((c) => (reset[`f_${c.key}`] = null));
             setSearch("");
@@ -284,76 +287,73 @@ export default function DataTable({
         </div>
       )}
 
-      <p className="text-muted" aria-live="polite">
-        Showing <strong className="text-ink">{pageRows.length}</strong> of <strong className="text-ink">{visible.length}</strong>
-        {visible.length !== rows.length && <> (filtered from {rows.length})</>}
-      </p>
-
       {visible.length === 0 ? (
-        <div className="rounded-card border-2 border-dashed border-line bg-surface p-8 text-center text-lg font-bold">{empty}</div>
+        <div className="rounded-card border border-dashed border-line bg-surface px-6 py-10 text-center text-muted">{empty}</div>
       ) : (
         <>
           {/* Desktop / tablet table */}
-          <div className="card hidden overflow-x-auto rounded-card border border-line bg-surface md:block">
-            <table className="w-full border-collapse text-left">
-              <thead className="sticky top-0 bg-surface">
-                <tr className="border-b-2 border-line-strong">
-                  {columns.map((c) => {
-                    const on = sortKey === c.key;
-                    return (
-                      <th key={c.key} scope="col" aria-sort={on ? (sortDesc ? "descending" : "ascending") : "none"}
-                        className={clsx("px-4 py-3 text-base font-bold", isNum(c) && "text-right")}>
-                        <button type="button" onClick={() => update({ sort: c.key, dir: on && !sortDesc ? "desc" : "asc" })}
-                          className={clsx("inline-flex min-h-10 items-center gap-1 rounded-md hover:text-brand", isNum(c) && "flex-row-reverse")}
-                          title={`Sort by ${c.header}`}>
-                          {c.header}
-                          {on ? (sortDesc ? <ArrowDown className="size-4" aria-hidden /> : <ArrowUp className="size-4" aria-hidden />)
-                              : <ArrowUpDown className="size-4 opacity-40" aria-hidden />}
-                          <span className="sr-only">{on ? (sortDesc ? "sorted descending" : "sorted ascending") : ""}</span>
-                        </button>
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-              <tbody>
-                {pageRows.map((row, i) => (
-                  <tr key={row.id} className={clsx("border-b border-line", i % 2 === 1 && "bg-bg/60")}>
-                    {columns.map((c) => (
-                      <td key={c.key} className={clsx("px-4 py-3 align-top", isNum(c) && "tabular text-right whitespace-nowrap", c.type === "date" && "whitespace-nowrap")}>
-                        {renderCell(c, row.original)}
-                      </td>
-                    ))}
+          <div className="card hidden overflow-hidden rounded-card border border-line bg-surface shadow-card md:block">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-left">
+                <thead className="bg-surface-2">
+                  <tr className="border-b border-line">
+                    {columns.map((c) => {
+                      const on = sortKey === c.key;
+                      return (
+                        <th key={c.key} scope="col" aria-sort={on ? (sortDesc ? "descending" : "ascending") : "none"}
+                          className={clsx("whitespace-nowrap px-4 py-2 text-[0.8125rem] font-medium text-muted", isNum(c) && "text-right")}>
+                          <button type="button" onClick={() => update({ sort: c.key, dir: on && !sortDesc ? "desc" : "asc" })}
+                            className={clsx("inline-flex min-h-8 items-center gap-1 rounded-md hover:text-ink", on && "text-ink", isNum(c) && "flex-row-reverse")}
+                            title={`Sort by ${c.header}`}>
+                            {c.header}
+                            {on ? (sortDesc ? <ArrowDown className="size-3.5" aria-hidden /> : <ArrowUp className="size-3.5" aria-hidden />)
+                                : <ArrowUpDown className="size-3.5 opacity-40" aria-hidden />}
+                            <span className="sr-only">{on ? (sortDesc ? "sorted descending" : "sorted ascending") : ""}</span>
+                          </button>
+                        </th>
+                      );
+                    })}
                   </tr>
-                ))}
-              </tbody>
-              {Object.keys(totals).length > 0 && (
-                <tfoot>
-                  <tr className="border-t-2 border-line-strong bg-brand-soft font-bold">
-                    {columns.map((c, i) => (
-                      <td key={c.key} className={clsx("px-4 py-3", isNum(c) && "tabular text-right whitespace-nowrap")}>
-                        {c.key in totals ? (c.type === "money" ? fmtMoney.format(totals[c.key] / 100) : totals[c.key].toLocaleString("en-GB"))
-                          : i === 0 ? `Total (${visible.length})` : ""}
-                      </td>
-                    ))}
-                  </tr>
-                </tfoot>
-              )}
-            </table>
+                </thead>
+                <tbody>
+                  {pageRows.map((row) => (
+                    <tr key={row.id} className="border-b border-line transition-colors last:border-0 hover:bg-surface-2/70">
+                      {columns.map((c) => (
+                        <td key={c.key} className={clsx("px-4 py-3 align-top text-[0.9375rem] text-ink-2", c.primary && "min-w-[13rem]", isNum(c) && "tabular whitespace-nowrap text-right", c.type === "date" && "whitespace-nowrap")}>
+                          {renderCell(c, row.original)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+                {Object.keys(totals).length > 0 && (
+                  <tfoot>
+                    <tr className="border-t border-line bg-surface-2 font-semibold text-ink">
+                      {columns.map((c, i) => (
+                        <td key={c.key} className={clsx("px-4 py-3 text-[0.9375rem]", isNum(c) && "tabular whitespace-nowrap text-right")}>
+                          {c.key in totals ? (c.type === "money" ? fmtMoney.format(totals[c.key] / 100) : totals[c.key].toLocaleString("en-GB"))
+                            : i === 0 ? `Total (${visible.length})` : ""}
+                        </td>
+                      ))}
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
           </div>
 
           {/* Phone: stacked cards */}
-          <ul className="flex flex-col gap-3 md:hidden">
+          <ul className="flex flex-col gap-2.5 md:hidden">
             {pageRows.map((row) => {
               const primary = columns.find((c) => c.primary) ?? columns[0];
               return (
-                <li key={row.id} className="card rounded-card border border-line bg-surface p-4">
-                  <div className="mb-2 text-lg font-bold">{renderCell(primary, row.original)}</div>
-                  <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+                <li key={row.id} className="card rounded-card border border-line bg-surface p-4 shadow-card">
+                  <div className="mb-2 font-medium">{renderCell(primary, row.original)}</div>
+                  <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-[0.9375rem]">
                     {columns.filter((c) => c !== primary && !c.mobileHidden).map((c) => (
                       <div key={c.key} className="contents">
                         <dt className="text-muted">{c.header}</dt>
-                        <dd className={clsx(isNum(c) && "tabular")}>{renderCell(c, row.original)}</dd>
+                        <dd className={clsx("min-w-0 text-ink-2", isNum(c) && "tabular")}>{renderCell(c, row.original)}</dd>
                       </div>
                     ))}
                   </dl>
@@ -361,7 +361,7 @@ export default function DataTable({
               );
             })}
             {Object.keys(totals).length > 0 && (
-              <li className="rounded-card border-2 border-brand bg-brand-soft p-4 font-bold">
+              <li className="rounded-card border border-brand-line bg-brand-soft p-4 font-semibold">
                 {columns.filter((c) => c.key in totals).map((c) => (
                   <div key={c.key} className="flex justify-between"><span>Total {c.header.toLowerCase()}</span>
                     <span className="tabular">{c.type === "money" ? fmtMoney.format(totals[c.key] / 100) : totals[c.key]}</span></div>
@@ -371,20 +371,27 @@ export default function DataTable({
           </ul>
 
           {/* Paging */}
-          <div className="no-print flex flex-wrap items-center justify-between gap-3">
-            <label className="flex items-center gap-2 font-bold">
-              Show
-              <select className="input w-auto" value={pageSize} onChange={(e) => update({ size: e.target.value })}>
-                {[10, 25, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
-              </select>
-              per page
-            </label>
-            <div className="flex items-center gap-2">
-              <button type="button" disabled={page === 0} onClick={() => update({ page: String(page) })}
-                className="min-h-12 rounded-xl border-2 border-line-strong bg-surface px-5 font-bold disabled:opacity-40">← Previous</button>
-              <span className="px-2">Page {page + 1} of {pageCount}</span>
-              <button type="button" disabled={page + 1 >= pageCount} onClick={() => update({ page: String(page + 2) })}
-                className="min-h-12 rounded-xl border-2 border-line-strong bg-surface px-5 font-bold disabled:opacity-40">Next →</button>
+          <div className="no-print flex flex-wrap items-center justify-between gap-3 text-[0.9375rem] text-muted">
+            <p aria-live="polite">
+              Showing <span className="font-medium text-ink">{pageRows.length}</span> of <span className="font-medium text-ink">{visible.length}</span>
+              {visible.length !== rows.length && <> (filtered from {rows.length})</>}
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2">
+                <span>Rows</span>
+                <select className="input !min-h-10 w-auto !py-1" value={pageSize} onChange={(e) => update({ size: e.target.value })}>
+                  {[10, 25, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </label>
+              <div className="flex items-center gap-2">
+                <button type="button" disabled={page === 0} onClick={() => update({ page: String(page) })} className={clsx(smallBtn, "disabled:opacity-40")}>
+                  ← Previous
+                </button>
+                <span className="whitespace-nowrap tabular">Page {page + 1} of {pageCount}</span>
+                <button type="button" disabled={page + 1 >= pageCount} onClick={() => update({ page: String(page + 2) })} className={clsx(smallBtn, "disabled:opacity-40")}>
+                  Next →
+                </button>
+              </div>
             </div>
           </div>
         </>

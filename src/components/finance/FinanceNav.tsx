@@ -20,14 +20,14 @@ export default function FinanceNav({ slug }: { slug: string }) {
   const path = usePathname();
   const base = `/${slug}/finance`;
   return (
-    <nav aria-label="Finance sections" className="no-print mb-6 flex gap-2 overflow-x-auto border-b-2 border-line pb-2">
+    <nav aria-label="Finance sections" className="no-print -mx-1 mb-6 flex gap-1 overflow-x-auto border-b border-line px-1">
       {TABS.map((t) => {
         const href = base + t.path;
         const on = t.path === "" ? path === base : path === href || path.startsWith(href + "/");
         return (
           <Link key={t.label} href={href} aria-current={on ? "page" : undefined}
-            className={clsx("whitespace-nowrap rounded-lg px-4 py-2 font-bold no-underline",
-              on ? "bg-ink text-surface" : "bg-surface text-ink hover:bg-bg border border-line")}>
+            className={clsx("-mb-px whitespace-nowrap border-b-2 px-3 py-2.5 text-[0.9375rem] font-medium no-underline transition-colors",
+              on ? "border-brand text-ink" : "border-transparent text-muted hover:border-line-strong/50 hover:text-ink")}>
             {t.label}
           </Link>
         );

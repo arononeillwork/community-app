@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
 import { getCommunityOr404 } from "@/lib/community";
 import LoginForms from "./LoginForms";
 
@@ -16,19 +17,26 @@ export default async function LoginPage({ params, searchParams }: {
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10"
-      style={{ background: "linear-gradient(160deg, var(--brand-soft), var(--bg))" }}>
-      <div className="card w-full max-w-md rounded-card border border-line bg-surface p-6 sm:p-8">
-        <div className="mb-6 flex flex-col items-center gap-3 text-center">
-          {c.branding?.logo_url && <img src={c.branding.logo_url} alt="" className="size-16 rounded-2xl" />}
-          <h1 className="text-2xl font-bold">Sign in to {c.name}</h1>
+      style={{ background: "radial-gradient(90% 60% at 50% 0%, var(--brand-soft), var(--bg) 70%)" }}>
+      <div className="w-full max-w-[26rem]">
+        <div className="card rounded-[20px] border border-line bg-surface p-6 shadow-pop sm:p-8">
+          <div className="mb-6 flex flex-col items-center gap-3 text-center">
+            {c.branding?.logo_url && <img src={c.branding.logo_url} alt="" className="size-14 rounded-2xl" />}
+            <div>
+              <h1 className="text-[1.5rem] font-semibold leading-tight">Sign in</h1>
+              <p className="mt-1 text-[0.9375rem] text-muted">to {c.name}</p>
+            </div>
+          </div>
+          <LoginForms slug={c.slug} initialError={initialError} />
         </div>
-        <LoginForms slug={c.slug} initialError={initialError} />
-        <p className="mt-6 text-center">
-          <Link href={`/${c.slug}`} className="font-bold text-brand underline">← Back to {c.name}</Link>
+        <p className="mt-5 text-center">
+          <Link href={`/${c.slug}`} className="inline-flex items-center gap-1 text-[0.9375rem] font-medium text-muted no-underline hover:text-ink">
+            <ChevronLeft aria-hidden className="size-4" /> Back to {c.name}
+          </Link>
         </p>
         {process.env.NODE_ENV !== "production" && (
-          <details className="mt-6 rounded-xl bg-bg p-3 text-sm">
-            <summary className="cursor-pointer font-bold">Local test accounts</summary>
+          <details className="mt-5 rounded-xl border border-dashed border-line bg-surface/60 p-3 text-sm text-ink-2">
+            <summary className="cursor-pointer font-medium">Local test accounts</summary>
             <p className="mt-2">Password for all: <code>Password123!</code></p>
             <ul className="mt-1 list-disc pl-5">
               <li>admin@oceanagardens.test (admin)</li>

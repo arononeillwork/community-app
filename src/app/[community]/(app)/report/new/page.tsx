@@ -15,7 +15,7 @@ export default async function NewReportPage({ params }: { params: Promise<{ comm
   ]);
   return (
     <div className="mx-auto max-w-2xl">
-      <PageHeader title="Report a problem" back={{ href: `/${s.community.slug}/report`, label: "My reports" }}
+      <PageHeader title="Report a problem" back={{ href: `/${s.community.slug}/report`, label: s.isAdmin ? "Reports" : "My reports" }}
         intro="Tell us what is wrong. You can add photos. The office will reply here." />
       <ReportForm slug={s.community.slug} categories={categories ?? []} units={units ?? []} />
     </div>

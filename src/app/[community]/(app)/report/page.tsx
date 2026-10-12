@@ -1,5 +1,6 @@
 import { requireMember } from "@/lib/community";
 import { createClient } from "@/lib/supabase/server";
+import { Plus } from "lucide-react";
 import { Button, PageHeader } from "@/components/ui";
 import DataTable, { type Column } from "@/components/DataTable";
 
@@ -44,7 +45,7 @@ export default async function ReportsPage({ params }: { params: Promise<{ commun
       <PageHeader
         title={s.isAdmin ? "All reports" : "My reports"}
         intro={s.isAdmin ? "Incidents and complaints from residents. Open one to reply or change its status." : "Problems you have reported, and what is happening with them."}
-        actions={<Button href={`${base}/report/new`} size="lg">+ Report a problem</Button>}
+        actions={<Button href={`${base}/report/new`}><Plus aria-hidden className="size-4" /> Report a problem</Button>}
       />
       <DataTable
         rows={rows}

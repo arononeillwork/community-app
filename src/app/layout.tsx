@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Atkinson_Hyperlegible, Lexend } from "next/font/google";
+import { Figtree, Lexend } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
 
-// Atkinson Hyperlegible: designed for readers with low vision. Lexend: optional reading-ease font.
-const main = Atkinson_Hyperlegible({ subsets: ["latin", "latin-ext"], weight: ["400", "700"], variable: "--font-main" });
+// Figtree: clean, open and highly legible at small sizes. Lexend: optional reading-ease font.
+const main = Figtree({ subsets: ["latin", "latin-ext"], weight: ["400", "500", "600", "700"], variable: "--font-main" });
 const dys = Lexend({ subsets: ["latin", "latin-ext"], variable: "--font-dys" });
 
 export const metadata: Metadata = {
@@ -24,6 +24,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   if (jar.get("a11y_hc")?.value === "1") classes.push("hc");
   if (jar.get("a11y_dys")?.value === "1") classes.push("dys");
   if (jar.get("a11y_rm")?.value === "1") classes.push("rm");
+  const theme = jar.get("a11y_theme")?.value;
+  if (theme === "dark") classes.push("dark");
+  else if (theme === "system") classes.push("theme-system");
   const lang = jar.get("lang")?.value ?? "en";
 
   return (
