@@ -146,12 +146,71 @@ select community_id, unit_id, current_date, overdue_cents from v_unit_balance wh
 select pg_temp.check((select overdue_cents from v_unit_balance where label = 'C-2C') = 0, 'payment is allocated to the oldest open charges and clears arrears');
 rollback;
 
+-- ---------------------------------------------------------------- members by block + key contacts
+-- tenant1 rents a flat in Block B.
+begin;
+select pg_temp.login('tenant1@oceanagardens.test');
+select pg_temp.check((select array_agg(distinct building_name) from block_directory('0cea0a00-0000-4000-8000-000000000001')) = '{"Block B"}',
+  'resident only sees the members of their own block');
+select pg_temp.check((select count(*) from block_directory('0cea0a00-0000-4000-8000-000000000001')) >= 12, 'resident sees everyone in their block');
+select pg_temp.check((select count(*) from block_directory('0cea0a00-0000-4000-8000-000000000001') where not shared and (email is not null or phone is not null)) = 0,
+  'contact details are blank when not shared');
+select pg_temp.check((select count(*) from block_directory('0cea0a00-0000-4000-8000-000000000001') where shared and phone is not null) >= 6,
+  'block neighbours who share with the block show their phone');
+select pg_temp.check((select count(*) from block_summary('0cea0a00-0000-4000-8000-000000000001')) = 3, 'resident sees the list of blocks');
+select pg_temp.check((select array_agg(building_name) from block_summary('0cea0a00-0000-4000-8000-000000000001') where is_mine) = '{"Block B"}',
+  'resident can only open their own block');
+select pg_temp.check((select count(*) from key_contacts where role_title = 'Block B representative') = 1, 'resident sees their block representative');
+select pg_temp.check((select count(*) from key_contacts where role_title in ('Block A representative', 'Block C representative')) = 0,
+  'resident does not see other blocks'' representatives');
+select pg_temp.check((select count(*) from key_contacts where role_title = 'Concierge') = 1, 'resident sees community-wide key contacts');
+select pg_temp.check((select count(*) from key_contacts where visibility = 'admins') = 0, 'resident does not see admin-only key contacts');
+do $$ begin
+  insert into key_contacts (community_id, role_title, phone) values ('0cea0a00-0000-4000-8000-000000000001', 'Fake president', '123');
+  raise exception 'FAIL: resident added a key contact';
+exception when insufficient_privilege then null;
+end $$;
+select pg_temp.check(true, 'resident cannot add key contacts');
+rollback;
+
+-- A person who shares with admins only stays hidden from their own block.
+begin;
+select set_config('test.hidden', (select profile_id::text from contact_preferences where visibility = 'admins'
+  and profile_id in (select o.owner_id from unit_ownerships o join units u on u.id = o.unit_id join buildings b on b.id = u.building_id where b.name = 'Block B') limit 1), true);
+select pg_temp.login('tenant1@oceanagardens.test');
+select pg_temp.check((select bool_and(phone is null and email is null) from block_directory('0cea0a00-0000-4000-8000-000000000001')
+                      where profile_id = current_setting('test.hidden')::uuid), 'admins-only contact details are hidden from neighbours');
+select pg_temp.check((select count(*) from block_directory('0cea0a00-0000-4000-8000-000000000001')
+                      where profile_id = current_setting('test.hidden')::uuid) >= 1, 'but the person is still listed by name and flat');
+rollback;
+
+begin;
+select set_config('test.demo_block', (select id::text from buildings where name = 'Main building'), true);
+select pg_temp.login('admin@oceanagardens.test');
+select pg_temp.check((select count(distinct building_name) from block_directory('0cea0a00-0000-4000-8000-000000000001')) = 3, 'admin sees every block');
+select pg_temp.check((select bool_and(shared and phone is not null) from block_directory('0cea0a00-0000-4000-8000-000000000001')),
+  'admin sees everyone''s contact details');
+select pg_temp.check((select count(*) from key_contacts where role_title like 'Block % representative') = 3, 'admin sees all block representatives');
+insert into key_contacts (community_id, role_title, contact_group, name, phone) values ('0cea0a00-0000-4000-8000-000000000001', 'Night security', 'staff', 'Test', '600');
+select pg_temp.check((select count(*) from key_contacts where role_title = 'Night security') = 1, 'admin can add a key contact');
+do $$ begin
+  insert into key_contacts (community_id, building_id, role_title, phone)
+  values ('0cea0a00-0000-4000-8000-000000000001', current_setting('test.demo_block')::uuid, 'Wrong block', '1');
+  raise exception 'FAIL: key contact attached to another community''s block';
+exception when raise_exception then
+  if sqlerrm like 'FAIL%' then raise; end if;
+end $$;
+select pg_temp.check(true, 'a key contact cannot point at another community''s block');
+rollback;
+
 -- ---------------------------------------------------------------- cross-community
 begin;
 select pg_temp.login('admin@demoheights.test');
 select pg_temp.check((select count(*) from units) = 2, 'Demo Heights admin only sees own units');
 select pg_temp.check((select count(*) from complaints) = 0, 'Demo Heights admin sees no Oceana complaints');
 select pg_temp.check((select count(*) from directory('0cea0a00-0000-4000-8000-000000000001')) = 0, 'Demo Heights admin cannot read Oceana directory');
+select pg_temp.check((select count(*) from block_directory('0cea0a00-0000-4000-8000-000000000001')) = 0, 'Demo Heights admin cannot read Oceana members');
+select pg_temp.check((select count(*) from key_contacts where community_id = '0cea0a00-0000-4000-8000-000000000001') = 0, 'Demo Heights admin cannot read Oceana key contacts');
 rollback;
 
 \echo 'All RLS tests passed'

@@ -93,7 +93,7 @@ begin
     values (uid, oc,
       (array['email','whatsapp','phone','email'])[1 + i % 4]::public.contact_method,
       (array['Weekdays 9:00–18:00','Mornings only','Any time','Evenings after 18:00'])[1 + i % 4],
-      (array['unit','unit','all','admins'])[1 + i % 4]::public.contact_visibility);
+      (array['block','block','all','admins'])[1 + i % 4]::public.contact_visibility);
   end loop;
   insert into public.contact_preferences (profile_id, community_id, preferred_method, best_times, visibility)
   values (treasurer_id, oc, 'email', 'Weekdays', 'all'), (admin_id, oc, 'phone', 'Office hours 09:00–14:00', 'all');
@@ -142,7 +142,7 @@ begin
       case when i = 7 then current_date + 10 when i <= 3 then current_date + 300 else null end,
       case when i = 1 then 'Added by landlord – long-term let' when i = 7 then 'Holiday let, two weeks' end);
     insert into public.contact_preferences (profile_id, community_id, preferred_method, visibility)
-    values (tenants[i], oc, 'whatsapp', 'unit');
+    values (tenants[i], oc, 'whatsapp', 'block');
   end loop;
 
   -- -------------------------------------------------------------------------
@@ -454,6 +454,31 @@ begin
   where t.community_id = oc;
 
   -- -------------------------------------------------------------------------
+  -- Key contacts: committee, management, on-site staff, services, emergencies, block representatives
+  -- -------------------------------------------------------------------------
+  insert into public.key_contacts (community_id, building_id, role_title, contact_group, profile_id, name, organisation, phone, whatsapp, email, hours, notes, sort) values
+    (oc, null, 'President', 'committee', owners[1], 'James Whitfield', null, '+34 611 000 001', '+34 611 000 001', 'president@oceanagardens.test', 'Evenings and weekends', 'Chairs the committee and the AGM. Contact for decisions about the community.', 1),
+    (oc, null, 'Vice-president', 'committee', owners[2], 'Ingrid Larsen', null, '+34 611 000 002', null, 'ingrid.larsen@oceanagardens.test', 'Weekdays', 'Stands in for the president.', 2),
+    (oc, null, 'Secretary', 'committee', owners[7], 'Eleanor Hughes', null, '+34 611 000 007', null, 'secretary@oceanagardens.test', 'Weekdays 10:00 – 18:00', 'Meeting notices, agendas and minutes.', 3),
+    (oc, null, 'Treasurer', 'committee', treasurer_id, 'Peter Johansson', null, '+34 600 100 202', null, 'treasurer@oceanagardens.test', 'Weekdays', 'Community fees, payments and the yearly budget.', 4),
+    (oc, b_ids[1], 'Block A representative', 'committee', owners[3], 'Hans Becker', null, '+34 611 000 003', '+34 611 000 003', null, 'Any time before 21:00', 'Your first contact for the Block A entrance, stairs and lift.', 5),
+    (oc, b_ids[2], 'Block B representative', 'committee', owners[13], 'Isabel Moreno', null, '+34 611 000 013', '+34 611 000 013', null, 'Mornings', 'Your first contact for the Block B entrance, stairs and lift.', 5),
+    (oc, b_ids[3], 'Block C representative', 'committee', owners[6], 'Carmen Ruiz', null, '+34 611 000 006', null, 'carmen.ruiz@oceanagardens.test', 'Afternoons', 'Your first contact for the Block C entrance, stairs and lift.', 5),
+    (oc, null, 'Property administrator', 'management', null, 'Elena Castro', 'Administración de Fincas Marbella', '+34 952 000 111', null, 'elena@fincasmarbella.test', 'Mon – Fri 09:00 – 14:00', 'Day-to-day management, insurance claims, legal and fee questions.', 10),
+    (oc, null, 'Community office', 'management', admin_id, 'María López', 'Oceana Gardens office', '+34 600 100 201', null, 'admin@oceanagardens.test', 'Mon – Fri 09:00 – 14:00', 'Block A, ground floor. Keys, garage remotes, moving in or out.', 11),
+    (oc, null, 'Concierge', 'staff', null, 'Miguel Torres', 'Conserjería Integral', '+34 600 100 200', '+34 600 100 200', 'miguel@conserjeria.test', 'Every day 08:00 – 22:00', 'At the main gate. Accepts parcels. First call for leaks, lifts and access problems.', 20),
+    (oc, null, 'Maintenance and repairs', 'services', null, 'Jorge Ramos', 'Reparaciones Rápidas', '+34 611 222 333', '+34 611 222 333', 'jorge@reparaciones.test', 'Mon – Sat 08:00 – 18:00', 'Plumbing, electrics and small repairs in shared areas. Book through the office or concierge.', 30),
+    (oc, null, 'Pool', 'services', null, 'Laura Gómez', 'AquaClear Piscinas', '+34 952 100 002', null, 'service@aquaclear.test', 'Mon – Fri 08:00 – 16:00', null, 31),
+    (oc, null, 'Gardens', 'services', null, 'Antonio Pérez', 'Jardines del Sol S.L.', '+34 952 100 001', null, 'info@jardinesdelsol.test', 'Mon – Fri 07:30 – 15:30', null, 32),
+    (oc, null, 'Cleaning', 'services', null, 'Rosa Martín', 'LimpiaMax Servicios', '+34 952 100 004', null, 'rosa@limpiamax.test', 'Mon – Sat 07:00 – 13:00', null, 33),
+    (oc, null, 'Emergencies', 'emergency', null, null, 'Police, fire and ambulance', '112', null, null, '24 hours', null, 40),
+    (oc, null, 'Lift emergency line', 'emergency', null, null, 'Elevadores Costa S.A.', '+34 900 123 456', null, 'avisos@elevadorescosta.test', '24 hours', 'If someone is stuck in a lift. Press the alarm button in the lift first.', 41),
+    (oc, null, 'Local police', 'emergency', null, null, 'Policía Local', '092', null, null, '24 hours', null, 42),
+    (oc, null, 'Insurance claims', 'services', null, null, 'Seguros Mediterráneo', '+34 952 100 006', null, 'polizas@segurosmed.test', 'Mon – Fri 09:00 – 18:00', 'Policy for the building and shared areas. Tell the administrator first.', 34);
+  insert into public.key_contacts (community_id, role_title, contact_group, name, phone, visibility, sort) values
+    (oc, 'Committee private line', 'committee', 'Committee', '+34 611 999 000', 'admins', 9);
+
+  -- -------------------------------------------------------------------------
   -- Demo Heights: minimal data for isolation tests
   -- -------------------------------------------------------------------------
   insert into public.buildings (community_id, name) values (dm, 'Main building') returning id into bid;
@@ -462,4 +487,5 @@ begin
   insert into public.suppliers (community_id, name, service_type) values (dm, 'Demo Cleaners Ltd', 'Cleaning') returning id into s_id;
   insert into public.invoices (community_id, supplier_id, category_id, invoice_number, issue_date, net_cents, vat_cents)
   values (dm, s_id, uid, 'DEMO-001', current_date, 10000, 2000);
+  insert into public.key_contacts (community_id, role_title, contact_group, name, phone) values (dm, 'Caretaker', 'staff', 'Demo Caretaker', '+44 20 0000 0000');
 end $$;

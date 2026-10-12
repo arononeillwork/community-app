@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "db:test": "psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -q -f supabase/tests/rls_test.sql"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
