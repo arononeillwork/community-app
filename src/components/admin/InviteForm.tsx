@@ -75,7 +75,7 @@ export default function InviteForm({ action, blocks, today }: {
       </Card>
 
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="hint max-w-md">They get an email with a link to sign in. If they already have an account, they are added straight away.</p>
+        <p className="hint max-w-md">They get an email with a link. They join once they accept. People who already belong to this community are added straight away.</p>
         <SubmitButton size="lg" pendingLabel="Sending…" className="w-full sm:w-auto sm:px-8">Send invite</SubmitButton>
       </div>
     </form>
