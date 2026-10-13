@@ -228,7 +228,7 @@ export default async function HomePage({ params }: { params: Promise<{ community
           <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-3">
             {notices.map((n) => (
               <li key={n.title} className="rounded-xl bg-surface-2 p-4">
-                <div className="text-sm text-muted">{date(n.date)}</div>
+                <div className="text-sm text-muted">Posted {date(n.date)}</div>
                 <div className="mt-0.5 font-medium">{n.title}</div>
                 <p className="mt-1 text-[0.9375rem] text-ink-2">{n.body}</p>
               </li>

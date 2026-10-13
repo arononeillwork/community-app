@@ -15,6 +15,9 @@ export default async function Landing({ params }: { params: Promise<{ community:
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const info = c.info;
+  // Notices drop off 60 days after they were posted.
+  const noticeCutoff = new Date(Date.now() - 60 * 86_400_000).toISOString().slice(0, 10);
+  const notices = (info?.public_notices ?? []).filter((n) => !n.date || n.date >= noticeCutoff);
   const cta = user
     ? { href: `/${c.slug}/home`, label: "Go to my community" }
     : { href: `/${c.slug}/login`, label: "Sign in" };
@@ -76,13 +79,13 @@ export default async function Landing({ params }: { params: Promise<{ community:
 
           <Card>
             <SectionHeader icon={Megaphone} title="Notices" />
-            {(info?.public_notices ?? []).length === 0 ? (
+            {notices.length === 0 ? (
               <p className="text-muted">No notices at the moment.</p>
             ) : (
               <ul className="divide-y divide-line">
-                {info!.public_notices.map((n) => (
+                {notices.map((n) => (
                   <li key={n.title} className="py-3 first:pt-0 last:pb-0">
-                    <div className="text-sm text-muted">{date(n.date)}</div>
+                    <div className="text-sm text-muted">Posted {date(n.date)}</div>
                     <div className="font-medium">{n.title}</div>
                     <p className="text-[0.9375rem] text-ink-2">{n.body}</p>
                   </li>

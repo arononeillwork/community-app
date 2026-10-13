@@ -141,8 +141,10 @@ begin
       current_date - (i * 60),
       case when i = 7 then current_date + 10 when i <= 3 then current_date + 300 else null end,
       case when i = 1 then 'Added by landlord – long-term let' when i = 7 then 'Holiday let, two weeks' end);
+    -- Holiday lets already got office-only sharing from the tenancy trigger; keep that.
     insert into public.contact_preferences (profile_id, community_id, preferred_method, visibility)
-    values (tenants[i], oc, 'whatsapp', 'block');
+    values (tenants[i], oc, 'whatsapp', 'block')
+    on conflict (profile_id, community_id) do update set preferred_method = excluded.preferred_method;
   end loop;
 
   -- -------------------------------------------------------------------------
@@ -388,6 +390,10 @@ begin
     (oc, owners[16], (cc ->> 'Noise')::uuid, 'unit', u_ids[7], null, null, null, 'Noise complaint', 'Loud furniture moving late at night.', 'closed', 'low', now() - interval '230 days'),
     (oc, owners[17], (cc ->> 'Other')::uuid, 'common_area', null, null, null, null, 'Wi-Fi in community room', 'Could we get Wi-Fi in the community room for meetings?', 'new', 'low', now() - interval '8 days');
 
+  -- Resolved a few days after they were reported (matches the "Resolved" notifications in seeds/me.sql).
+  update public.complaints set resolved_at = created_at + interval '6 days'
+  where community_id = oc and status in ('resolved', 'closed');
+
   insert into public.complaint_updates (community_id, complaint_id, author_id, body, new_status)
   select oc, c.id, admin_id, 'Thank you — we have contacted the lift company and an engineer is booked for tomorrow morning.', 'in_progress'
   from public.complaints c where c.title = 'Lift out of order';
@@ -398,7 +404,7 @@ begin
   insert into public.documents (community_id, folder, title, description, visibility, original_language, extracted_text, uploaded_by) values
     (oc, 'Rules', 'Community statutes (Estatutos)', 'The legal statutes of the community of owners.', 'all', 'es', 'Estatutos de la Comunidad de Propietarios Oceana Gardens…', admin_id),
     (oc, 'Rules', 'House rules 2026', 'Everyday rules for all residents.', 'all', 'en', 'Quiet hours are 23:00 to 08:00…', admin_id),
-    (oc, 'Meetings', 'Minutes – Annual General Meeting 2026', 'Approved minutes of the last AGM.', 'all', 'en', 'Present: 24 owners in person, 6 by proxy…', admin_id),
+    (oc, 'Meetings', 'Minutes – Annual General Meeting ' || (extract(year from current_date) - 1), 'Approved minutes of the last AGM.', 'all', 'en', 'Present: 24 owners in person, 6 by proxy…', admin_id),
     (oc, 'Finance', 'Budget ' || extract(year from current_date), 'Approved annual budget.', 'all', 'en', null, treasurer_id),
     (oc, 'Finance', 'Insurance policy summary', 'Cover, excess and claims contact.', 'owners', 'es', null, treasurer_id),
     (oc, 'Contracts', 'Concierge service contract', 'Signed contract with Conserjería Integral.', 'admins', 'es', null, admin_id);
@@ -425,6 +431,15 @@ begin
      null, 'https://zoom.us/j/1234567890', E'1. Roof quotes\n2. Levy timetable\n3. Garden contract renewal', admin_id),
     (oc, 'Annual General Meeting ' || extract(year from current_date), 'agm', date_trunc('day', now()) + interval '45 days 17 hours', 120,
      'Community room, Block A', 'https://teams.microsoft.com/l/meetup-join/sample', E'1. Approval of accounts\n2. Budget for next year\n3. Roof works update\n4. Election of committee\n5. Any other business', admin_id);
+
+  -- Notices dated relative to today, and the AGM notice gives the same date as the AGM meeting.
+  update public.community_public_info set public_notices = jsonb_build_array(
+    jsonb_build_object('title', 'Pool closed for cleaning', 'date', to_char(current_date - 3, 'YYYY-MM-DD'),
+      'body', 'The pool is closed on Monday mornings until 13:00 for cleaning.'),
+    jsonb_build_object('title', 'Annual General Meeting', 'date', to_char(current_date - 1, 'YYYY-MM-DD'),
+      'body', 'The AGM is on ' || to_char((date_trunc('day', now()) + interval '45 days 17 hours') at time zone 'Europe/Madrid', 'FMDay FMDD FMMonth')
+        || ' in the community room, Block A. The time, agenda and a link to join online are in the Meetings section.'))
+  where community_id = oc;
 
   update public.complaints set kind = 'incident'
   where community_id = oc and category_id in ((cc ->> 'Maintenance')::uuid, (cc ->> 'Safety')::uuid)
