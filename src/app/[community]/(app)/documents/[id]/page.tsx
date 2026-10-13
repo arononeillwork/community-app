@@ -30,7 +30,7 @@ function withoutTitleLine(text: string | null, title: string) {
 
 export default async function DocumentPage({ params, searchParams }: {
   params: Promise<{ community: string; id: string }>;
-  searchParams: Promise<{ lang?: string; saved?: string }>;
+  searchParams: Promise<{ lang?: string; saved?: string; file?: string }>;
 }) {
   const { community, id } = await params;
   const sp = await searchParams;
@@ -75,6 +75,9 @@ export default async function DocumentPage({ params, searchParams }: {
         actions={s.isAdmin ? <Button href={`${base}/documents/${d.id}/edit`} variant="secondary"><Pencil aria-hidden className="size-4" /> Edit</Button> : undefined} />
       <div className="flex flex-col gap-5">
         {notice && <Notice tone="ok">{notice}</Notice>}
+        {sp.file === "missing" && d.storage_path && (
+          <Notice tone="bad">The file could not be opened. Please try again in a moment, or ask the office.</Notice>
+        )}
 
         <Card className="flex flex-col gap-5">
           {(d.description || d.storage_path) && (

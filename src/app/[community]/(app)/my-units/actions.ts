@@ -82,6 +82,12 @@ async function addTenantInner(slug: string, form: FormData): Promise<FormState> 
   let tenantId = existing?.id as string | undefined;
   let invited = false;
   if (tenantId) {
+    // Only people who already belong to this community can be linked by an owner. Anyone else
+    // (for example someone registered with another community) is added by the office, so an
+    // owner can't attach a stranger's account or learn their details. The message is neutral.
+    const { count: memberHere } = await admin.from("memberships").select("id", { count: "exact", head: true })
+      .eq("community_id", s.community.id).eq("profile_id", tenantId).in("status", ["active", "pending"]);
+    if (!memberHere) return { error: "We couldn't add this email address. Please ask the office to add your tenant." };
     const { count } = await supabase.from("tenancies").select("id", { count: "exact", head: true })
       .eq("unit_id", unit.id).eq("tenant_id", tenantId).in("status", ["active", "pending"]);
     if (count) return { error: `This person is already a tenant of ${unit.label}.` };

@@ -46,7 +46,8 @@ export const HREF = {
   bins: () => "/info",
   document: (id: string) => `/documents/${id}`,
   meeting: (id: string) => `/meetings/${id}`,
-  local: () => "/local",
+  local: (id?: string) => (id ? `/local#place-${id}` : "/local"),
+  faq: (id: string) => `/info#faq-${id}`,
   contacts: () => "/contacts",
   members: () => "/members",
   report: (id: string) => `/report/${id}`,
@@ -246,10 +247,10 @@ export function weekdayList(days: number[], lang: "en" | "es" = "en"): string {
 export function sourceFor(item: KnowledgeItem): Source {
   switch (item.type) {
     case "info": return { kind: "info", label: item.row.title, href: HREF.info(item.row.id) };
-    case "faq": return { kind: "faq", label: "Community FAQ", href: null };
+    case "faq": return { kind: "faq", label: "Community FAQ", href: HREF.faq(item.row.id) };
     case "bin": return { kind: "bins", label: "Bin days", href: HREF.bins() };
     case "document": return { kind: "document", label: item.row.title, href: HREF.document(item.row.id) };
-    case "place": return { kind: "local", label: item.row.name, href: HREF.local() };
+    case "place": return { kind: "local", label: item.row.name, href: HREF.local(item.row.id) };
     case "meeting": return { kind: "meeting", label: item.row.title, href: HREF.meeting(item.row.id) };
   }
 }

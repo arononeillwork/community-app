@@ -93,3 +93,29 @@ select s.id, s.community_id, s.name, s.service_type, s.email, s.phone, s.active,
             and extract(year from i.issue_date) = extract(year from current_date)), 0)::bigint as spend_this_year_cents,
   coalesce((select sum(total_cents) from public.invoices i where i.supplier_id = s.id and i.status <> 'disputed'), 0)::bigint as spend_all_time_cents
 from public.suppliers s;
+
+-- ---------------------------------------------------------------------------
+-- 4. A tenancy that needs approval alerts the administrators.
+-- ---------------------------------------------------------------------------
+create or replace function public.notify_pending_tenancy()
+returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  if auth.uid() is null or new.status <> 'pending' then
+    return new;
+  end if;
+  insert into public.notifications (community_id, profile_id, kind, title, body, link)
+  select distinct new.community_id, m.profile_id, 'tenancy',
+    'New tenant waiting for approval: flat ' || u.label,
+    coalesce(p.full_name, 'A tenant') || ' · from ' || to_char(new.start_date, 'FMDD Mon YYYY'),
+    '/admin/people/' || new.tenant_id
+  from public.memberships m
+  join public.units u on u.id = new.unit_id
+  left join public.profiles p on p.id = new.tenant_id
+  where m.community_id = new.community_id and m.role = 'admin' and m.status = 'active'
+    and m.profile_id is distinct from auth.uid();
+  return new;
+end $$;
+
+create trigger notify_pending_tenancy
+after insert on public.tenancies
+for each row execute function public.notify_pending_tenancy();

@@ -23,8 +23,8 @@ export function SectionHeader({ title, description, icon: Icon, action, as: As =
   title: ReactNode; description?: ReactNode; icon?: LucideIcon; action?: ReactNode; as?: "h2" | "h3"; className?: string;
 }) {
   return (
-    <div className={clsx("mb-4 flex items-start justify-between gap-3", className)}>
-      <div className="flex min-w-0 items-start gap-3">
+    <div className={clsx("mb-4 flex flex-wrap items-start justify-between gap-x-3 gap-y-2", className)}>
+      <div className="flex min-w-[min(100%,12rem)] flex-1 items-start gap-3">
         {Icon && (
           <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand-text">
             <Icon aria-hidden className="size-[1.15rem]" strokeWidth={2} />

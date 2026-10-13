@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { WEEKDAYS, date } from "@/lib/format";
 import { Avatar, Badge, Button, Card, SectionHeader } from "@/components/ui";
 import { ContactActions } from "@/components/contact";
+import { todayAndTomorrow } from "@/components/library/meta";
 
 export const metadata = { title: "Home" };
 
@@ -23,7 +24,7 @@ export default async function HomePage({ params }: { params: Promise<{ community
   const tz = s.community.timezone;
   const c = s.community.id;
 
-  const tomorrow = new Date(Date.now() + 86400000);
+  const { tomorrow } = todayAndTomorrow(tz); // weekday number in the community's time zone
   const [{ data: bins }, { data: nextMeeting }, { data: contacts }, { data: blocks }, reports] = await Promise.all([
     supabase.from("bin_schedules").select("bin_type, color, color_hex, weekdays").eq("community_id", c).order("sort"),
     supabase.from("meetings").select("id, title, starts_at, location, meeting_url").eq("community_id", c)
@@ -36,7 +37,7 @@ export default async function HomePage({ params }: { params: Promise<{ community
       : supabase.from("complaints").select("status, priority").eq("community_id", c).eq("reporter_id", s.userId).in("status", ["new", "acknowledged", "in_progress"]),
   ]);
 
-  const binsTomorrow = (bins ?? []).filter((b) => b.weekdays.includes(tomorrow.getDay()));
+  const binsTomorrow = (bins ?? []).filter((b) => b.weekdays.includes(tomorrow));
   const open = reports.data ?? [];
   const urgent = open.filter((r) => r.priority === "urgent" || r.priority === "high").length;
 
@@ -83,7 +84,7 @@ export default async function HomePage({ params }: { params: Promise<{ community
       {/* Today */}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,17rem),1fr))] gap-4">
         <Card className="flex flex-col">
-          <SectionHeader icon={Trash2} title="Bins tomorrow" description={WEEKDAYS[tomorrow.getDay()]} />
+          <SectionHeader icon={Trash2} title="Bins tomorrow" description={WEEKDAYS[tomorrow]} />
           <ul className="flex flex-col gap-2">
             {binsTomorrow.map((b) => (
               <li key={b.bin_type} className="flex items-center gap-2.5 text-[0.9375rem]">

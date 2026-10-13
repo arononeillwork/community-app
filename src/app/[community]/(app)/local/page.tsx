@@ -115,7 +115,7 @@ export default async function LocalPage({ params, searchParams }: {
                 const route = safeHttpUrl(p.route_url);
                 const who = suggestedBy.get(p.id);
                 return (
-                  <li key={p.id} className="flex">
+                  <li key={p.id} id={`place-${p.id}`} className="flex scroll-mt-20 rounded-card target:ring-2 target:ring-brand">
                     <Card as="article" className="flex w-full flex-col gap-3">
                       <div className="flex items-start gap-3">
                         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand-text">

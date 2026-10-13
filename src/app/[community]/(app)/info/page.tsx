@@ -7,6 +7,8 @@ import { date, humanize } from "@/lib/format";
 import { inkFor } from "@/lib/color";
 import { Badge, Button, Card, Empty, IconButton, Notice, PageHeader, SectionHeader } from "@/components/ui";
 import RichText from "@/components/library/RichText";
+import FaqList, { type Faq } from "@/components/library/FaqList";
+import HashOpener from "@/components/library/HashOpener";
 import {
   INFO_CATEGORIES, VISIBILITY_LABELS, WEEK, infoIcon, listWords, todayAndTomorrow, weekdaysInWords, type Visibility,
 } from "@/components/library/meta";
@@ -44,11 +46,12 @@ export default async function InfoPage({ params, searchParams }: {
   const base = `/${s.community.slug}`;
 
   // RLS hides owners-only and admins-only information from people who may not see it.
-  const [{ data: binRows }, { data: pageRows }] = await Promise.all([
+  const [{ data: binRows }, { data: pageRows }, { data: faqRows }] = await Promise.all([
     supabase.from("bin_schedules").select("id, bin_type, color, color_hex, weekdays, put_out_time, location, notes")
       .eq("community_id", c).order("sort").order("bin_type"),
     supabase.from("info_pages").select("id, title, body, category, icon, visibility, updated_at")
       .eq("community_id", c).order("sort").order("title"),
+    supabase.from("faq_entries").select("id, question, answer").eq("community_id", c).order("created_at"),
   ]);
   const bins = (binRows ?? []) as Bin[];
   const pages = (pageRows ?? []) as InfoPage[];
@@ -81,6 +84,7 @@ export default async function InfoPage({ params, searchParams }: {
           )}
         </div>
 
+        <div className="flex min-w-0 flex-col gap-5">
         {groups.length === 0 ? (
           <Empty title="No building information yet" icon={BookOpen}
             action={s.isAdmin ? <Button href={`${base}/info/pages/new`} size="sm">Add information</Button> : undefined}>
@@ -89,7 +93,10 @@ export default async function InfoPage({ params, searchParams }: {
         ) : (
           <BuildingInfo groups={groups} base={base} isAdmin={s.isAdmin} timeZone={s.community.timezone} />
         )}
+          <FaqList items={(faqRows ?? []) as Faq[]} />
+        </div>
       </div>
+      <HashOpener />
     </>
   );
 }
@@ -200,7 +207,7 @@ function BuildingInfo({ groups, base, isAdmin, timeZone }: {
               const Icon = infoIcon(p.icon);
               const urgent = p.category === "emergency";
               return (
-                <details key={p.id} id={`info-${p.id}`} className="group" open={p.id === firstEmergency}>
+                <details key={p.id} id={`info-${p.id}`} className="group scroll-mt-20" open={p.id === firstEmergency}>
                   <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-5 py-2.5 transition-colors hover:bg-surface-2 sm:px-6 [&::-webkit-details-marker]:hidden">
                     <span className={clsx("grid size-9 shrink-0 place-items-center rounded-xl", urgent ? "bg-bad-soft text-bad" : "bg-brand-soft text-brand-text")}>
                       <Icon aria-hidden className="size-[1.15rem]" />

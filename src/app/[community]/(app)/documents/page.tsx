@@ -163,7 +163,7 @@ export default async function DocumentsPage({ params, searchParams }: {
                       const sn = snippets.get(d.id);
                       return (
                         <li key={d.id}>
-                          <Link href={`${base}/documents/${d.id}${sn?.lang ? `?lang=${sn.lang}#text` : ""}`} className="group flex items-center gap-4 px-5 py-3.5 text-ink no-underline transition-colors hover:bg-surface-2 sm:px-6">
+                          <Link href={`${base}/documents/${d.id}${sn?.lang ? `?lang=${sn.lang}#text` : ""}`} className="group flex items-start gap-3.5 px-5 py-3.5 text-ink no-underline transition-colors hover:bg-surface-2 sm:items-center sm:gap-4 sm:px-6">
                             <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-surface-2 text-ink-2 ring-1 ring-inset ring-line">
                               <kind.icon aria-hidden className="size-5" />
                             </span>
@@ -185,7 +185,7 @@ export default async function DocumentsPage({ params, searchParams }: {
                               <span className="block">{date(d.created_at, s.community.timezone)}</span>
                               <span className="block">{fileWords}</span>
                             </span>
-                            <ChevronRight aria-hidden className="size-4 shrink-0 text-muted transition-transform group-hover:translate-x-0.5" />
+                            <ChevronRight aria-hidden className="size-4 shrink-0 self-center text-muted transition-transform group-hover:translate-x-0.5" />
                           </Link>
                         </li>
                       );

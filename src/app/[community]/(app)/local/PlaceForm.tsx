@@ -103,15 +103,15 @@ export default function PlaceForm({ slug, id, mode, initial }: {
         <h2 className="text-[1.0625rem] font-semibold">Getting in</h2>
         <Choices id="step_free" legend="Step-free access" error={err("step_free")} hint="No steps from the street, or a ramp or lift.">
           <div className="grid grid-cols-3 gap-2">
-            {/* Three short answers side by side, also on phones: the selected one is filled and ticked. */}
+            {/* Three short answers side by side, also on phones: the selected one is filled, in medium weight, and ticked where there is room. */}
             {[{ v: "yes", t: "Yes" }, { v: "no", t: "No" }, { v: "", t: "Not sure" }].map((o) => {
               const checked = v.step_free === o.v;
               return (
                 <label key={o.v || "unknown"}
-                  className={clsx("flex min-h-12 cursor-pointer items-center justify-center gap-1.5 rounded-xl border px-2 text-center transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-[var(--focus)]",
-                    checked ? "border-brand bg-brand-soft text-brand-text" : "border-line text-ink hover:bg-surface-2")}>
+                  className={clsx("flex min-h-12 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border px-2 text-center transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-[var(--focus)]",
+                    checked ? "border-brand bg-brand-soft font-medium text-brand-text" : "border-line text-ink hover:bg-surface-2")}>
                   <input type="radio" name="step_free" value={o.v} checked={checked} onChange={set("step_free")} className="sr-only" />
-                  {checked && <Check aria-hidden className="size-4 shrink-0" />}
+                  {checked && <Check aria-hidden className="hidden size-4 shrink-0 sm:block" />}
                   <span>{o.t}</span>
                 </label>
               );

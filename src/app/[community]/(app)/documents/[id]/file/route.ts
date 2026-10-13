@@ -21,7 +21,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const ext = fileExtension(doc.storage_path);
   const { data } = await supabase.storage.from("documents")
     .createSignedUrl(doc.storage_path, 300, download ? { download: safeFileName(`${doc.title}.${ext}`) } : undefined);
-  if (!data?.signedUrl) return new NextResponse("Not found", { status: 404 });
+  // The row is visible but the file cannot be signed (missing object, storage hiccup): explain it on the document page.
+  if (!data?.signedUrl) return NextResponse.redirect(new URL(`/${s.community.slug}/documents/${id}?file=missing`, request.url), 303);
 
   return NextResponse.redirect(data.signedUrl, { status: 303, headers: { "Cache-Control": "no-store" } });
 }
