@@ -8,6 +8,7 @@ import { WEEKDAYS, date } from "@/lib/format";
 import { Avatar, Badge, Button, Card, SectionHeader } from "@/components/ui";
 import { ContactActions } from "@/components/contact";
 import { todayAndTomorrow } from "@/components/library/meta";
+import { whatsappFor, type DirRow } from "@/components/people/types";
 
 export const metadata = { title: "Home" };
 
@@ -37,6 +38,25 @@ export default async function HomePage({ params }: { params: Promise<{ community
       : supabase.from("complaints").select("status, priority").eq("community_id", c).eq("reporter_id", s.userId).in("status", ["new", "acknowledged", "in_progress"]),
   ]);
 
+  const [flatReports, awaitingApproval, landlords] = await Promise.all([
+    // Open reports about a flat the owner owns (without who made them).
+    s.isOwner
+      ? supabase.rpc("flat_reports", { c }).then((r) => ((r.data ?? []) as { status: string }[])
+          .filter((x) => ["new", "acknowledged", "in_progress"].includes(x.status)).length)
+      : Promise.resolve(0),
+    s.isFinance
+      ? supabase.from("invoices").select("id", { count: "exact", head: true }).eq("community_id", c).eq("status", "received").then((r) => r.count ?? 0)
+      : Promise.resolve(0),
+    // A tenant's landlord, from the block list (it only shows details they agreed to share).
+    s.isTenant && !s.isOwner && !s.isGuest
+      ? supabase.rpc("block_directory", { c }).then((r) => {
+          const rows = (r.data ?? []) as DirRow[];
+          const myFlats = new Set(rows.filter((x) => x.is_me && x.relation === "tenant").map((x) => x.unit_id));
+          return rows.filter((x) => myFlats.has(x.unit_id) && x.relation === "owner");
+        })
+      : Promise.resolve([] as DirRow[]),
+  ]);
+
   const binsTomorrow = (bins ?? []).filter((b) => b.weekdays.includes(tomorrow));
   const open = reports.data ?? [];
   const urgent = open.filter((r) => r.priority === "urgent" || r.priority === "high").length;
@@ -52,16 +72,18 @@ export default async function HomePage({ params }: { params: Promise<{ community
   ].filter((k, i, arr): k is NonNullable<typeof k> => !!k && arr.indexOf(k) === i).slice(0, 4);
 
   const myBlocks = (blocks ?? []).filter((b: { is_mine: boolean }) => b.is_mine);
-  const notices = s.community.info?.public_notices ?? [];
+  // Notices drop off the home page 60 days after their date.
+  const noticeCutoff = new Date(Date.now() - 60 * 86_400_000).toISOString().slice(0, 10);
+  const notices = (s.community.info?.public_notices ?? []).filter((n) => !n.date || n.date >= noticeCutoff);
   const meetingDay = nextMeeting ? new Date(nextMeeting.starts_at) : null;
   const fmt = (o: Intl.DateTimeFormatOptions) => meetingDay ? new Intl.DateTimeFormat("en-GB", { ...o, timeZone: tz }).format(meetingDay) : "";
   const todayLabel = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: tz }).format(new Date());
 
   const shortcuts = [
-    { href: `${base}/members`, label: "Members", text: "Neighbours in your block", icon: Users },
+    ...(s.isGuest ? [] : [{ href: `${base}/members`, label: "Members", text: "Neighbours in your block", icon: Users }]),
     { href: `${base}/info`, label: "Bins & info", text: "Bin days, rules, pool, parking", icon: Trash2 },
     { href: `${base}/meetings`, label: "Meetings", text: "Dates, agendas and minutes", icon: CalendarDays },
-    { href: `${base}/documents`, label: "Documents", text: "Statutes, minutes, insurance", icon: FileText },
+    ...(s.isGuest ? [] : [{ href: `${base}/documents`, label: "Documents", text: "Statutes, minutes, insurance", icon: FileText }]),
     { href: `${base}/local`, label: "Local area", text: "Walks, cafés, pharmacy, buses", icon: Map },
     { href: `${base}/money`, label: "Where the money goes", text: "This year's spending", icon: PiggyBank },
   ];
@@ -80,6 +102,17 @@ export default async function HomePage({ params }: { params: Promise<{ community
           <Button href={`${base}/report/new`}><AlertTriangle aria-hidden className="size-4" /> Report a problem</Button>
         </div>
       </div>
+
+      {awaitingApproval > 0 && (
+        <Link href={`${base}/finance/invoices?view=received`}
+          className="flex items-center gap-3 rounded-card border border-warn/30 bg-warn-soft px-4 py-3 text-ink no-underline transition-colors hover:border-warn/60">
+          <FileText aria-hidden className="size-5 shrink-0 text-warn" />
+          <span className="flex-1 text-[0.9375rem]">
+            {awaitingApproval === 1 ? "1 invoice is" : `${awaitingApproval} invoices are`} waiting for approval
+          </span>
+          <ArrowRight aria-hidden className="size-4 shrink-0 text-muted" />
+        </Link>
+      )}
 
       {/* Today */}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,17rem),1fr))] gap-4">
@@ -126,7 +159,12 @@ export default async function HomePage({ params }: { params: Promise<{ community
             <span className="text-[0.9375rem] text-muted">{open.length === 1 ? "open report" : "open reports"}</span>
           </div>
           {urgent > 0 && <div className="mt-2"><Badge tone="bad">{urgent} high priority</Badge></div>}
-          {!s.isAdmin && open.length === 0 && <p className="mt-2 text-[0.9375rem] text-muted">Nothing waiting. Something broken? Let the office know.</p>}
+          {flatReports > 0 && (
+            <Link href={`${base}/report?f_who=${encodeURIComponent("About your flat")}`} className="mt-2 text-[0.9375rem] font-medium no-underline hover:underline">
+              {flatReports} about your flat
+            </Link>
+          )}
+          {!s.isAdmin && open.length === 0 && !flatReports && <p className="mt-2 text-[0.9375rem] text-muted">Nothing waiting. Something broken? Let the office know.</p>}
           <Link href={`${base}/report`} className="mt-auto inline-flex items-center gap-1 pt-4 text-sm font-medium no-underline hover:underline">
             {s.isAdmin ? "Review reports" : "See your reports"} <ArrowRight aria-hidden className="size-3.5" />
           </Link>
@@ -140,6 +178,17 @@ export default async function HomePage({ params }: { params: Promise<{ community
               action={<Button href={`${base}/contacts`} variant="ghost" size="sm">All contacts</Button>} />
           </div>
           <ul className="divide-y divide-line">
+            {landlords.map((p) => (
+              <li key={`landlord-${p.profile_id}-${p.unit_id}`} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-3 sm:px-6">
+                <Avatar name={p.full_name} />
+                <div className="min-w-[min(100%,9rem)] flex-1">
+                  <div className="text-sm text-muted">Your landlord · {p.unit_label}</div>
+                  <div className="truncate font-medium text-ink">{p.full_name}</div>
+                  {!p.shared && <div className="truncate text-sm text-muted">Doesn&apos;t share contact details. The office can pass on a message.</div>}
+                </div>
+                {p.shared && <ContactActions name={p.full_name} phone={p.phone} whatsapp={whatsappFor(p)} email={p.email} />}
+              </li>
+            ))}
             {pick.map((k) => (
               <li key={k.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-3 sm:px-6">
                 <Avatar name={k.name ?? k.organisation ?? k.role_title} />
@@ -154,7 +203,7 @@ export default async function HomePage({ params }: { params: Promise<{ community
           </ul>
         </Card>
 
-        <Card className="flex min-w-0 flex-[1_1_17rem] flex-col">
+        {!s.isGuest && <Card className="flex min-w-0 flex-[1_1_17rem] flex-col">
           <SectionHeader icon={Users} title={s.isAdmin ? "Members" : myBlocks.length > 1 ? "Your blocks" : "Your block"} />
           {s.isAdmin || myBlocks.length ? (
             <ul className="flex flex-col gap-2">
@@ -170,7 +219,7 @@ export default async function HomePage({ params }: { params: Promise<{ community
             className="mt-auto inline-flex items-center gap-1 pt-4 text-sm font-medium no-underline hover:underline">
             {s.isAdmin ? "Open the member list" : "See your neighbours"} <ArrowRight aria-hidden className="size-3.5" />
           </Link>
-        </Card>
+        </Card>}
       </div>
 
       {notices.length > 0 && (

@@ -73,6 +73,8 @@ export type Session = {
   isFinance: boolean;
   isOwner: boolean;
   isTenant: boolean;
+  /** Holiday-let or short-stay guest: building information only, no member list or documents. */
+  isGuest: boolean;
 };
 
 /** Signed-in member of this community, or redirect to the community's login page. */
@@ -98,6 +100,11 @@ export const requireMember = cache(async (slug: string): Promise<Session> => {
     redirect(invites?.length ? `/${slug}/join` : `/${slug}/login?error=not_member`);
   }
 
+  // Only a tenant with no other role can be a limited guest; skip the lookup for everyone else.
+  const isGuest = roles.length === 1 && roles[0] === "tenant"
+    ? Boolean((await supabase.rpc("is_limited_guest", { c: community.id })).data)
+    : false;
+
   return {
     community,
     userId: user.id,
@@ -109,8 +116,16 @@ export const requireMember = cache(async (slug: string): Promise<Session> => {
     isFinance: roles.includes("admin") || roles.includes("treasurer"),
     isOwner: roles.includes("owner"),
     isTenant: roles.includes("tenant"),
+    isGuest,
   };
 });
+
+/** A member who is not a short-stay guest (guests don't get the member list or documents). */
+export async function requireResident(slug: string) {
+  const s = await requireMember(slug);
+  if (s.isGuest) redirect(`/${slug}/home`);
+  return s;
+}
 
 export async function requireFinance(slug: string) {
   const s = await requireMember(slug);

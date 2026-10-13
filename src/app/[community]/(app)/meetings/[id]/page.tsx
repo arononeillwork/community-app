@@ -256,7 +256,7 @@ export default async function MeetingPage({ params, searchParams }: {
     <Card>
       <SectionHeader icon={CalendarCheck} title={canRsvp ? "Will you be there?" : "Replies"}
         description={cancelled ? "This meeting was cancelled." : !canRsvp ? "Replies are closed." : "Let the committee know."} />
-      <RsvpButtons current={mine} counts={counts} open={canRsvp} hasLink={!!m.meeting_url}
+      <RsvpButtons current={mine} counts={counts} open={canRsvp} hasLink={!!m.meeting_url} hasPlace={!!m.location}
         action={rsvp.bind(null, slug, m.id)} />
     </Card>
   );

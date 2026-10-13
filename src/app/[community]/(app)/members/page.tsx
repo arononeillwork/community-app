@@ -1,4 +1,4 @@
-import { requireMember } from "@/lib/community";
+import { requireResident } from "@/lib/community";
 import AdminMembers from "./AdminMembers";
 import ResidentMembers from "./ResidentMembers";
 
@@ -10,7 +10,7 @@ export default async function MembersPage({ params, searchParams }: {
 }) {
   const { community } = await params;
   const sp = await searchParams;
-  const s = await requireMember(community);
+  const s = await requireResident(community);
   return s.isAdmin
     ? <AdminMembers s={s} view={sp.view === "list" ? "list" : "blocks"} blockId={sp.block} />
     : <ResidentMembers s={s} blockId={sp.block} />;

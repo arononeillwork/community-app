@@ -17,10 +17,12 @@ function NameLine({ p, badges }: { p: Person; badges: string[] }) {
   );
 }
 
-function OfficeOnly() {
+/** Shown instead of contact buttons. Role holders can still be reached through their role contact. */
+function NotShared({ roleHolder }: { roleHolder: boolean }) {
   return (
     <div className="mt-0.5 flex items-center gap-1.5 text-sm text-muted">
-      <Lock aria-hidden className="size-3.5 shrink-0" /> Shares details with the office only
+      <Lock aria-hidden className="size-3.5 shrink-0" />
+      {roleHolder ? "Reach them through Key contacts" : "Doesn't share contact details"}
     </div>
   );
 }
@@ -55,7 +57,7 @@ export function PersonLine({ p, badges = [], variant = "list", as: As = "li", cl
               <Clock aria-hidden className="size-3.5 shrink-0" /> <span><span className="sr-only">Best time to call: </span>{p.best_times}</span>
             </div>
           )}
-          {!p.shared && <OfficeOnly />}
+          {!p.shared && !p.is_me && <NotShared roleHolder={badges.length > 0} />}
           {canContact && (
             <ContactActions className="mt-3" variant="buttons" name={p.full_name} phone={p.phone} whatsapp={whatsappFor(p)} email={p.email} />
           )}
@@ -70,7 +72,7 @@ export function PersonLine({ p, badges = [], variant = "list", as: As = "li", cl
       <div className="min-w-0">
         <NameLine p={p} badges={badges} />
         <div className="text-sm text-muted">{relation}</div>
-        {!p.shared && <OfficeOnly />}
+        {!p.shared && !p.is_me && <NotShared roleHolder={badges.length > 0} />}
       </div>
       {canContact && (
         <ContactActions className="col-start-2 sm:col-start-auto" name={p.full_name} phone={p.phone} whatsapp={whatsappFor(p)} email={p.email} />

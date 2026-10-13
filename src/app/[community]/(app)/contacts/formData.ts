@@ -10,12 +10,15 @@ const ROLE_NAMES: Record<string, string> = { admin: "Administrator", treasurer: 
 
 /** Blocks and members for the contact form. Admin-only pages call this after requireAdmin. */
 export async function loadFormOptions(supabase: Client, c: string) {
-  const [{ data: buildings }, { data: memberships }, { data: dir }] = await Promise.all([
+  const [{ data: buildings }, { data: memberships }, { data: dir }, { data: sharing }] = await Promise.all([
     supabase.from("buildings").select("id, name").eq("community_id", c).order("sort").order("name"),
     supabase.from("memberships").select("profile_id, role, profile:profiles(full_name, email, phone)")
       .eq("community_id", c).eq("status", "active"),
     supabase.rpc("block_directory", { c }),
+    supabase.from("contact_preferences").select("profile_id, visibility").eq("community_id", c),
   ]);
+  // People who keep their phone and email from their neighbours. The form warns before publishing them.
+  const keepsPrivate = new Set((sharing ?? []).filter((p) => p.visibility === "admins" || p.visibility === "unit").map((p) => p.profile_id as string));
 
   const flats = new Map<string, string[]>();
   for (const r of (dir ?? []) as DirRow[]) {
@@ -29,6 +32,7 @@ export async function loadFormOptions(supabase: Client, c: string) {
     if (!m.profile) continue;
     const cur = people.get(m.profile_id) ?? {
       id: m.profile_id, name: m.profile.full_name || "Unnamed member", phone: m.profile.phone, email: m.profile.email, detail: "", roles: [],
+      private: keepsPrivate.has(m.profile_id),
     };
     cur.roles.push(m.role);
     people.set(m.profile_id, cur);

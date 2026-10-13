@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BookOpenText, Download, ExternalLink, Languages, Pencil } from "lucide-react";
-import { getCommunity, requireMember } from "@/lib/community";
+import { getCommunity, requireResident } from "@/lib/community";
 import { createClient } from "@/lib/supabase/server";
 import { date } from "@/lib/format";
 import { Badge, Button, Card, DefinitionList, Empty, Notice, PageHeader, SectionHeader, TabLinks, buttonClass } from "@/components/ui";
@@ -34,7 +34,7 @@ export default async function DocumentPage({ params, searchParams }: {
 }) {
   const { community, id } = await params;
   const sp = await searchParams;
-  const s = await requireMember(community);
+  const s = await requireResident(community);
   if (!UUID_RE.test(id)) notFound();
   const supabase = await createClient();
   const base = `/${s.community.slug}`;

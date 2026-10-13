@@ -20,11 +20,13 @@ export default async function SettingsPage({ params }: { params: Promise<{ commu
   const supabase = await createClient();
   const slug = s.community.slug;
 
-  const [{ data: profile }, { data: sharing }] = await Promise.all([
+  const [{ data: profile }, { data: sharing }, { data: roleContacts }] = await Promise.all([
     supabase.from("profiles").select("full_name, email, phone").eq("id", s.userId).single(),
     supabase.from("contact_preferences").select("preferred_method, best_times, visibility")
       .eq("profile_id", s.userId).eq("community_id", s.community.id).maybeSingle(),
+    supabase.from("key_contacts").select("role_title").eq("community_id", s.community.id).eq("profile_id", s.userId),
   ]);
+  const myRoles = [...new Set((roleContacts ?? []).map((k) => k.role_title as string))];
 
   const prefs = {
     font_scale: s.prefs?.font_scale ?? 100,
@@ -40,7 +42,8 @@ export default async function SettingsPage({ params }: { params: Promise<{ commu
   const channel = s.prefs?.notify_channel ?? "email";
   const email = profile?.email ?? s.email;
   const phone = profile?.phone ?? null;
-  const visibility = sharing?.visibility ?? "block";
+  // Contact details are shared within a block at most; the older "everyone" setting reads as "my block".
+  const visibility = !sharing?.visibility || sharing.visibility === "all" ? "block" : sharing.visibility;
   const method = sharing?.preferred_method ?? "email";
 
   const channelText: Record<string, string> = {
@@ -106,6 +109,12 @@ export default async function SettingsPage({ params }: { params: Promise<{ commu
             </div>
           </FieldGroup>
           <Notice tone="info">Administrators can always see your contact details, so they can reach you in an emergency such as a leak.</Notice>
+          {myRoles.length > 0 && (
+            <Notice tone="info">
+              You&apos;re listed on Key contacts as {myRoles.join(", ")}. The phone and email shown there are set by the office
+              and stay visible whatever you choose here. Ask the office if you&apos;d like them changed.
+            </Notice>
+          )}
         </ActionForm>
       </Card>
 

@@ -32,10 +32,10 @@ export default async function AppLayout({ children, params }: { children: React.
       { href: `${base}/meetings`, label: "Meetings", icon: "meetings" },
       { href: `${base}/info`, label: "Bins & info", icon: "info" },
       { href: `${base}/local`, label: "Local area", icon: "local" },
-      { href: `${base}/documents`, label: "Documents", icon: "documents" },
+      ...(s.isGuest ? [] : [{ href: `${base}/documents`, label: "Documents", icon: "documents" as const }]),
     ] },
     { label: "People", items: [
-      { href: `${base}/members`, label: "Members", icon: "members" },
+      ...(s.isGuest ? [] : [{ href: `${base}/members`, label: "Members", icon: "members" as const }]),
       { href: `${base}/contacts`, label: "Key contacts", icon: "contacts" },
     ] },
     { label: "My home", items: [

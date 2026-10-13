@@ -22,7 +22,6 @@ export const METHODS = [
 
 export const VISIBILITIES = [
   { value: "block", label: "People in my block", description: "Neighbours in your block can see your phone and email." },
-  { value: "all", label: "Everyone in the community", description: "Anyone who lives here or owns a flat can see them." },
   { value: "unit", label: "Only my landlord or tenant", description: "Only the people linked to your own flat." },
   { value: "admins", label: "Only the administrators", description: "Neighbours see your name and flat, but not how to reach you." },
 ] as const;

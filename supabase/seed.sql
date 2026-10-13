@@ -93,10 +93,10 @@ begin
     values (uid, oc,
       (array['email','whatsapp','phone','email'])[1 + i % 4]::public.contact_method,
       (array['Weekdays 9:00–18:00','Mornings only','Any time','Evenings after 18:00'])[1 + i % 4],
-      (array['block','block','all','admins'])[1 + i % 4]::public.contact_visibility);
+      (array['block','block','unit','admins'])[1 + i % 4]::public.contact_visibility);
   end loop;
   insert into public.contact_preferences (profile_id, community_id, preferred_method, best_times, visibility)
-  values (treasurer_id, oc, 'email', 'Weekdays', 'all'), (admin_id, oc, 'phone', 'Office hours 09:00–14:00', 'all');
+  values (treasurer_id, oc, 'email', 'Weekdays', 'block'), (admin_id, oc, 'phone', 'Office hours 09:00–14:00', 'block');
 
   for i in 1..array_length(tenant_names, 1) loop
     tenants := tenants || pg_temp.seed_user('tenant' || i || '@oceanagardens.test', tenant_names[i], '+34 622 000 ' || lpad(i::text, 3, '0'));

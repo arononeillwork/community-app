@@ -1,30 +1,80 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useRef, useState, useTransition } from "react";
 import { Camera, X } from "lucide-react";
 import { createReport } from "../actions";
 import { Card, Notice, buttonClass } from "@/components/ui";
 
 type Opt = { id: string; label?: string; name?: string };
 
+const MAX_PHOTOS = 5;
+const MAX_SIDE = 2000;
+
+/**
+ * Shrink a phone photo to at most 2000 px on the longest side (JPEG, quality 0.8), so a 12 MB camera
+ * picture uploads as well under 1 MB on a slow connection. Anything the browser can't draw (some HEIC
+ * files) or that is already small is sent as it is; the server still checks type and size.
+ */
+async function shrink(file: File): Promise<File> {
+  if (!file.type.startsWith("image/") || file.type === "image/gif" || file.size < 600_000) return file;
+  try {
+    const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+    const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext("2d")?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.8));
+    if (!blob || blob.size >= file.size) return file;
+    return new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg", lastModified: file.lastModified });
+  } catch {
+    return file;
+  }
+}
+
 export default function ReportForm({ slug, categories, units }: { slug: string; categories: Opt[]; units: Opt[] }) {
   const [state, action, pending] = useActionState(createReport.bind(null, slug), undefined);
+  const [, startTransition] = useTransition();
   const [kind, setKind] = useState<"incident" | "complaint">("incident");
   const [target, setTarget] = useState("common_area");
+  const [photos, setPhotos] = useState<File[]>([]);
   const [previews, setPreviews] = useState<{ url: string; name: string }[]>([]);
+  const [preparing, setPreparing] = useState(false);
+  const [tooMany, setTooMany] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  function onFiles(files: FileList | null) {
-    setPreviews(Array.from(files ?? []).slice(0, 5).map((f) => ({ url: URL.createObjectURL(f), name: f.name })));
+  async function onFiles(files: FileList | null) {
+    const picked = Array.from(files ?? []);
+    setTooMany(picked.length > MAX_PHOTOS);
+    previews.forEach((p) => URL.revokeObjectURL(p.url));
+    setPreparing(true);
+    const ready = await Promise.all(picked.slice(0, MAX_PHOTOS).map(shrink));
+    setPhotos(ready);
+    setPreviews(ready.map((f) => ({ url: URL.createObjectURL(f), name: f.name })));
+    setPreparing(false);
   }
 
   function clearPhotos() {
     if (fileRef.current) fileRef.current.value = "";
+    previews.forEach((p) => URL.revokeObjectURL(p.url));
+    setPhotos([]);
     setPreviews([]);
+    setTooMany(false);
+  }
+
+  // Send the prepared (smaller) photos, and keep what was typed if the server asks for a fix.
+  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (preparing) return;
+    const data = new FormData(e.currentTarget);
+    data.delete("photos");
+    for (const f of photos) data.append("photos", f);
+    startTransition(() => action(data));
   }
 
   return (
-    <form action={action} className="flex flex-col gap-5">
+    <form onSubmit={onSubmit} className="flex flex-col gap-5">
       {state?.error && <Notice tone="bad">{state.error}</Notice>}
 
       <Card>
@@ -90,12 +140,14 @@ export default function ReportForm({ slug, categories, units }: { slug: string; 
       </Card>
 
       <Card className="flex flex-col gap-4">
-        <h2 className="text-[1.0625rem] font-semibold">Photos <span className="font-normal text-muted">· optional, up to 5</span></h2>
+        <h2 className="text-[1.0625rem] font-semibold">Photos <span className="font-normal text-muted">· optional, up to {MAX_PHOTOS}</span></h2>
         <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong/70 p-5 text-center font-medium text-ink-2 transition-colors hover:border-brand hover:bg-surface-2">
           <span className="grid size-11 place-items-center rounded-full bg-brand-soft text-brand-text"><Camera aria-hidden className="size-5" /></span>
           Take a photo or choose from your phone
           <input ref={fileRef} type="file" name="photos" accept="image/*" multiple capture="environment" className="sr-only" onChange={(e) => onFiles(e.target.files)} />
         </label>
+        {preparing && <p role="status" className="hint">Preparing your photos…</p>}
+        {tooMany && <Notice tone="warn">Only the first {MAX_PHOTOS} photos will be sent.</Notice>}
         {previews.length > 0 && (
           <>
             <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -108,7 +160,7 @@ export default function ReportForm({ slug, categories, units }: { slug: string; 
         )}
       </Card>
 
-      <button disabled={pending} type="submit" className={buttonClass("primary", "lg", "w-full sm:w-auto sm:self-end sm:px-8")}>
+      <button disabled={pending || preparing} type="submit" className={buttonClass("primary", "lg", "w-full sm:w-auto sm:self-end sm:px-8")}>
         {pending ? "Sending…" : "Send report"}
       </button>
     </form>

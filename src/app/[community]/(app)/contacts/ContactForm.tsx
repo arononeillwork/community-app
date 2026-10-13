@@ -8,7 +8,7 @@ import { GROUP_LABELS, VISIBILITY_LABELS, type ContactGroup, type ContactVisibil
 import { saveContact, type ContactField, type ContactFormState } from "./actions";
 
 export type ContactValues = Record<ContactField, string>;
-export type MemberOption = { id: string; name: string; phone: string | null; email: string | null; detail: string };
+export type MemberOption = { id: string; name: string; phone: string | null; email: string | null; detail: string; private?: boolean };
 
 const GROUP_ORDER: ContactGroup[] = ["committee", "management", "staff", "services", "emergency"];
 // The database shows "admins" rows to administrators and the treasurer (can_see), so say so.
@@ -97,6 +97,12 @@ export default function ContactForm({ slug, id, initial, blocks, members }: {
             {members.map((m) => <option key={m.id} value={m.id}>{m.name}{m.detail ? ` · ${m.detail}` : ""}</option>)}
           </select>
         ), "Choose the resident who holds this role. Their name, phone and email are filled in for you.")}
+        {members.find((m) => m.id === v.profile_id)?.private && (
+          <Notice tone="warn">
+            {members.find((m) => m.id === v.profile_id)?.name} keeps their phone and email private from neighbours.
+            Whatever you save below is shown on Key contacts, so check with them first, or use a role phone or email instead.
+          </Notice>
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
           {field("name", "Name", (
             <input {...aria("name")} className="input" maxLength={120} autoComplete="off" value={v.name} onChange={set("name")} placeholder="e.g. Miguel Torres" />

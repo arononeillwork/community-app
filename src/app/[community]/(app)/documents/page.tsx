@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ChevronRight, FileText, FolderOpen, Search, SearchX, Upload } from "lucide-react";
-import { requireMember } from "@/lib/community";
+import { requireResident } from "@/lib/community";
 import { createClient } from "@/lib/supabase/server";
 import { date } from "@/lib/format";
 import { Badge, Button, Card, Empty, Notice, PageHeader, TabLinks } from "@/components/ui";
@@ -49,7 +49,7 @@ export default async function DocumentsPage({ params, searchParams }: {
 }) {
   const { community } = await params;
   const sp = await searchParams;
-  const s = await requireMember(community);
+  const s = await requireResident(community);
   const supabase = await createClient();
   const c = s.community.id;
   const base = `/${s.community.slug}`;

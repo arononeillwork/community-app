@@ -10,7 +10,7 @@ const ICONS: Record<RsvpResponse, LucideIcon> = { attending: Users, online: Vide
 type Counts = Record<RsvpResponse, number>;
 
 /** Three toggle buttons (one pressed) plus live counts. Updates optimistically; the server action re-validates. */
-export function RsvpButtons({ current, counts, action, open, hasLink }: {
+export function RsvpButtons({ current, counts, action, open, hasLink, hasPlace = true }: {
   current: RsvpResponse | null;
   counts: Counts;
   action: (response: RsvpResponse) => Promise<{ error?: string }>;
@@ -18,6 +18,8 @@ export function RsvpButtons({ current, counts, action, open, hasLink }: {
   open: boolean;
   /** Whether "Joining online" makes sense (the meeting has a link). */
   hasLink: boolean;
+  /** Whether "Attending in person" makes sense (the meeting has a place). */
+  hasPlace?: boolean;
 }) {
   const [mine, setMine] = useOptimistic(current);
   const [pending, start] = useTransition();
@@ -38,7 +40,8 @@ export function RsvpButtons({ current, counts, action, open, hasLink }: {
     });
   }
 
-  const options = RSVP_OPTIONS.filter((o) => o.value !== "online" || hasLink || counts.online > 0);
+  const options = RSVP_OPTIONS.filter((o) =>
+    (o.value !== "online" || hasLink || counts.online > 0) && (o.value !== "attending" || hasPlace || counts.attending > 0));
 
   return (
     <div className="flex flex-col gap-4">

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AlertTriangle, ArrowDown, ArrowLeftRight, ArrowUp, Droplets, Phone, Users } from "lucide-react";
-import { requireMember } from "@/lib/community";
+import { requireResident } from "@/lib/community";
 import { createClient } from "@/lib/supabase/server";
 import { Card, PageHeader, SectionHeader, StatusBadge } from "@/components/ui";
 import { FlatGroupHeading, FlatRow } from "@/components/people/FlatRow";
@@ -16,7 +16,7 @@ type Unit = UnitLite & { building: { id: string; name: string } | null };
 
 export default async function FlatPage({ params }: { params: Promise<{ community: string; unitId: string }> }) {
   const { community, unitId } = await params;
-  const s = await requireMember(community);
+  const s = await requireResident(community);
   if (!UUID_RE.test(unitId)) notFound();
   const supabase = await createClient();
   const c = s.community.id;
