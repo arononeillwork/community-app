@@ -94,8 +94,8 @@ async function addTenantInner(slug: string, form: FormData): Promise<FormState> 
   } else {
     const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
     const { data: inv, error } = await admin.auth.admin.inviteUserByEmail(email, {
-      data: { full_name },
-      redirectTo: `${site}/${s.community.slug}/auth/callback`,
+      data: { full_name, community_name: s.community.name, invited_by: s.fullName },
+      redirectTo: `${site}/${s.community.slug}/auth/callback?next=${encodeURIComponent(`/${s.community.slug}/home`)}`,
     });
     if (error || !inv.user) return { error: "We could not send the invitation. Please check the email address and try again." };
     tenantId = inv.user.id;
@@ -112,6 +112,7 @@ async function addTenantInner(slug: string, form: FormData): Promise<FormState> 
     start_date,
     end_date,
     note: note || null,
+    invited_name: full_name,
   }).select("id, status").single();
   if (insertError || !t) {
     if (invited) await admin.auth.admin.deleteUser(tenantId);

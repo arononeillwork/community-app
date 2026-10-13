@@ -174,7 +174,7 @@ export default function InvoiceForm(props: Props) {
                   <label key={r} className={clsx("flex min-h-10 cursor-pointer items-center justify-center rounded-lg text-[0.9375rem] font-medium tabular transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[var(--focus)]",
                     rate === String(r) ? "bg-surface text-ink shadow-card" : "text-ink-2 hover:text-ink")}>
                     <input type="radio" name="vat_rate" value={r} checked={rate === String(r)} onChange={() => setRate(String(r))} className="sr-only" />
-                    {r} %
+                    {r}%
                   </label>
                 ))}
               </div>

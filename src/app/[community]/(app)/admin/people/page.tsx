@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Clock, UserPlus } from "lucide-react";
+import { Clock, MailCheck, UserPlus } from "lucide-react";
 import { requireAdmin } from "@/lib/community";
 import { createClient } from "@/lib/supabase/server";
 import { date } from "@/lib/format";
@@ -7,7 +7,7 @@ import { Avatar, Button, Card, Notice, PageHeader, SectionHeader } from "@/compo
 import SubmitButton from "@/components/admin/SubmitButton";
 import PeopleTable, { type PersonRow } from "@/components/admin/PeopleTable";
 import { ROLE_LABELS, ROLE_ORDER, TENANCY_TYPES, byLabel, dayInput } from "@/components/admin/format";
-import { approveTenancy, declineTenancy } from "./actions";
+import { approveTenancy, cancelInvitation, declineTenancy, resendInvitation } from "./actions";
 
 export const metadata = { title: "People" };
 
@@ -27,7 +27,7 @@ const NOTICES: Record<string, { tone: "ok" | "info" | "bad"; text: string }> = {
 
 export default async function PeoplePage({ params, searchParams }: {
   params: Promise<{ community: string }>;
-  searchParams: Promise<{ approved?: string; declined?: string; error?: string }>;
+  searchParams: Promise<{ approved?: string; declined?: string; error?: string; invited?: string; resent?: string; cancelled?: string }>;
 }) {
   const { community } = await params;
   const sp = await searchParams;
@@ -37,13 +37,15 @@ export default async function PeoplePage({ params, searchParams }: {
   const base = `/${s.community.slug}`;
   const today = dayInput(s.community.timezone);
 
-  const [{ data: memberships }, { data: ownerships }, { data: tenancies }] = await Promise.all([
+  const [{ data: memberships }, { data: ownerships }, { data: tenancies }, { data: invitations }] = await Promise.all([
     supabase.from("memberships").select("profile_id, role, status, profile:profiles(id, full_name, email, phone)").eq("community_id", c),
     supabase.from("unit_ownerships").select("owner_id, unit:units(id, label, building:buildings(name))")
       .eq("community_id", c).or(`end_date.is.null,end_date.gte.${today}`),
     supabase.from("tenancies")
       .select("id, tenant_id, status, tenancy_type, start_date, end_date, note, unit:units(id, label, building:buildings(name)), tenant:profiles!tenancies_tenant_id_fkey(full_name), added:profiles!tenancies_added_by_fkey(full_name)")
       .eq("community_id", c).in("status", ["active", "pending"]).order("created_at"),
+    supabase.from("community_invitations").select("id, email, full_name, role, created_at, unit:units(label)")
+      .eq("community_id", c).eq("status", "pending").order("created_at", { ascending: false }),
   ]);
 
   // One row per person: roles from memberships, flats from ownerships and tenancies.
@@ -76,7 +78,12 @@ export default async function PeoplePage({ params, searchParams }: {
 
   const pending = allTenancies.filter((t) => t.status === "pending");
   const typeLabel = (v: string) => TENANCY_TYPES.find((x) => x.value === v)?.label ?? v;
-  const notice = sp.approved ? NOTICES.approved : sp.declined ? NOTICES.declined : sp.error ? NOTICES.error : null;
+  const notice = sp.invited ? { tone: "ok" as const, text: `Invitation sent to ${sp.invited}. They'll appear here once they accept it.` }
+    : sp.resent ? { tone: "ok" as const, text: `Invitation sent again to ${sp.resent}.` }
+    : sp.cancelled ? { tone: "info" as const, text: "Invitation cancelled." }
+    : sp.error === "invite_failed" ? { tone: "bad" as const, text: "The invitation email could not be sent. Please try again in a few minutes." }
+    : sp.approved ? NOTICES.approved : sp.declined ? NOTICES.declined : sp.error ? NOTICES.error : null;
+  const waiting = (invitations ?? []) as unknown as { id: string; email: string; full_name: string | null; role: string; created_at: string; unit: { label: string } | null }[];
 
   return (
     <>
@@ -123,6 +130,35 @@ export default async function PeoplePage({ params, searchParams }: {
                 New tenants added by landlords now start straight away. <Link href={`${base}/admin/community#settings`}>Change this</Link>
               </p>
             )}
+          </Card>
+        )}
+
+        {waiting.length > 0 && (
+          <Card padded={false}>
+            <div className="p-5 pb-1 sm:p-6 sm:pb-1">
+              <SectionHeader icon={MailCheck} title="Invitations waiting for a reply"
+                description="People join once they open the email and accept. Their details appear after that." />
+            </div>
+            <ul className="divide-y divide-line border-t border-line">
+              {waiting.map((i) => (
+                <li key={i.id} className="flex flex-col gap-3 px-5 py-3.5 sm:flex-row sm:items-center sm:gap-4 sm:px-6">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-medium text-ink">{i.full_name || i.email}</div>
+                    <div className="truncate text-[0.9375rem] text-muted">
+                      {i.email} · {ROLE_LABELS[i.role as keyof typeof ROLE_LABELS] ?? i.role}{i.unit ? ` · flat ${i.unit.label}` : ""} · sent {date(i.created_at, s.community.timezone)}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <form action={resendInvitation.bind(null, s.community.slug, i.id)}>
+                      <SubmitButton size="sm" variant="secondary" pendingLabel="Sending…" aria-label={`Send the invitation to ${i.email} again`}>Send again</SubmitButton>
+                    </form>
+                    <form action={cancelInvitation.bind(null, s.community.slug, i.id)}>
+                      <SubmitButton size="sm" variant="ghost" pendingLabel="Cancelling…" aria-label={`Cancel the invitation to ${i.email}`}>Cancel</SubmitButton>
+                    </form>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </Card>
         )}
 

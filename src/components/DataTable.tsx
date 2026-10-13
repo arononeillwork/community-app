@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import clsx from "clsx";
 import {
   getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel,
   useReactTable, type ColumnDef, type SortingState, type FilterFn,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ArrowUpDown, Download, Printer, Search, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Download, Printer, Search, SlidersHorizontal, X } from "lucide-react";
 import { STATUS_LABELS, STATUS_TONES, Badge } from "@/components/ui";
 
 /**
@@ -101,6 +101,20 @@ export default function DataTable({
   const p = (k: string) => params.get(id + k) ?? "";
 
   const [search, setSearch] = useState(p("q"));
+  const [showFilters, setShowFilters] = useState(false);
+  // Wide tables scroll sideways inside their card; a fade on the right says there is more.
+  const scroller = useRef<HTMLDivElement>(null);
+  const [moreRight, setMoreRight] = useState(false);
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const check = () => setMoreRight(el.scrollWidth - el.clientWidth - el.scrollLeft > 4);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    el.addEventListener("scroll", check, { passive: true });
+    return () => { ro.disconnect(); el.removeEventListener("scroll", check); };
+  });
   const sortKey = p("sort") || defaultSort?.key || "";
   const sortDesc = p("sort") ? p("dir") === "desc" : !!defaultSort?.desc;
   const range = p("range");
@@ -179,7 +193,7 @@ export default function DataTable({
       case "money": out = v == null ? "—" : fmtMoney.format(Number(v) / 100); break;
       case "date": out = fmtDate(v); break;
       case "number": out = v == null ? "—" : Number(v).toLocaleString("en-GB"); break;
-      case "percent": out = v == null ? "—" : `${Number(v).toFixed(2)} %`; break;
+      case "percent": out = v == null ? "—" : `${Number(v).toFixed(2)}%`; break;
       case "status": out = v ? <Badge tone={STATUS_TONES[String(v)] ?? "neutral"}>{label(v)}</Badge> : "—"; break;
       case "tags": out = Array.isArray(v) ? v.join(", ") : label(v); break;
       default: out = v == null || v === "" ? "—" : String(v);
@@ -196,7 +210,12 @@ export default function DataTable({
   const shown = columns.filter((c) => !c.hidden);
 
   function exportCsv() {
-    const esc = (s: unknown) => `"${String(s ?? "").replace(/"/g, '""')}"`;
+    // Quote every cell, and stop text that starts like a formula from running in a spreadsheet.
+    const esc = (s: unknown) => {
+      let v = String(s ?? "");
+      if (/^[=+\-@\t\r]/.test(v)) v = `'${v}`;
+      return `"${v.replace(/"/g, '""')}"`;
+    };
     const cell = (c: Column, v: unknown) => {
       if (c.type === "money") return v == null ? "" : (Number(v) / 100).toFixed(2);
       return esc(Array.isArray(v) ? v.join("; ") : v);
@@ -247,14 +266,23 @@ export default function DataTable({
 
       {/* Filter bar */}
       <div className="no-print flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
-        <div className="field min-w-[min(100%,14rem)] flex-1">
-          <label htmlFor={`${id}search`} className="!text-sm !text-muted">Search</label>
-          <div className="relative">
-            <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-[1.1rem] -translate-y-1/2 text-muted" />
-            <input id={`${id}search`} type="search" className="input pl-10" value={search} placeholder={searchPlaceholder}
-              onChange={(e) => { setSearch(e.target.value); update({ q: e.target.value }); }} />
+        <div className="flex min-w-[min(100%,14rem)] flex-1 items-end gap-2">
+          <div className="field min-w-0 flex-1">
+            <label htmlFor={`${id}search`} className="!text-sm !text-muted">Search</label>
+            <div className="relative">
+              <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-[1.1rem] -translate-y-1/2 text-muted" />
+              <input id={`${id}search`} type="search" className="input pl-10" value={search} placeholder={searchPlaceholder}
+                onChange={(e) => { setSearch(e.target.value); update({ q: e.target.value }); }} />
+            </div>
           </div>
+          {/* Phones: the filters fold away so the records come first. */}
+          <button type="button" onClick={() => setShowFilters((v) => !v)} aria-expanded={showFilters} aria-controls={`${id}filters`}
+            className={clsx(smallBtn, "min-h-[2.875rem] md:hidden")}>
+            <SlidersHorizontal aria-hidden className="size-4" />
+            <span>Filters{Object.keys(active).length + (range ? 1 : 0) ? ` (${Object.keys(active).length + (range ? 1 : 0)})` : ""}</span>
+          </button>
         </div>
+        <div id={`${id}filters`} className={clsx(showFilters ? "flex flex-col gap-3" : "hidden", "md:contents")}>
         {filterCols.map((c) => {
           const values = Array.from(new Set(rows.map((r) => r[c.key]).filter((v) => v != null && v !== "").map(String))).sort();
           return (
@@ -283,6 +311,7 @@ export default function DataTable({
             <Printer aria-hidden className="size-4" /> Print
           </button>
         </div>
+        </div>
       </div>
 
       {chips.length > 0 && (
@@ -307,8 +336,11 @@ export default function DataTable({
       ) : (
         <>
           {/* Desktop / tablet table */}
-          <div className="card hidden overflow-hidden rounded-card border border-line bg-surface shadow-card md:block">
-            <div className="relative overflow-x-auto">
+          <div className="card relative hidden overflow-hidden rounded-card border border-line bg-surface shadow-card md:block">
+            {moreRight && (
+              <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-surface to-transparent" />
+            )}
+            <div ref={scroller} className="relative overflow-x-auto">
               <table className="w-full border-collapse text-left">
                 <thead className="bg-surface-2">
                   <tr className="border-b border-line">

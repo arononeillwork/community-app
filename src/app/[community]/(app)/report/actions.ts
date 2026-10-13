@@ -9,6 +9,7 @@ import { requireMember } from "@/lib/community";
 export type ReportState = { error?: string } | undefined;
 
 const MAX_PHOTOS = 5;
+const STATUSES = ["new", "acknowledged", "in_progress", "resolved", "closed"];
 const MAX_BYTES = 10 * 1024 * 1024;
 
 export async function createReport(slug: string, _prev: ReportState, form: FormData): Promise<ReportState> {
@@ -63,7 +64,8 @@ export async function addUpdate(slug: string, id: string, form: FormData) {
   const s = await requireMember(slug);
   const supabase = await createClient();
   const body = String(form.get("body") ?? "").trim();
-  const status = s.isAdmin ? String(form.get("status") ?? "") : "";
+  const raw = s.isAdmin ? String(form.get("status") ?? "") : "";
+  const status = STATUSES.includes(raw) ? raw : "";
   if (!body && !status) return;
   if (status) {
     await supabase.from("complaints").update({ status }).eq("id", id);
@@ -73,4 +75,17 @@ export async function addUpdate(slug: string, id: string, form: FormData) {
     body: body || `Status changed to ${status.replace(/_/g, " ")}`, new_status: status || null,
   });
   revalidatePath(`/${slug}/report/${id}`);
+}
+
+/** The owner of the flat a report is about sends the office a private note (the reporter never sees it). */
+export async function addOwnerNote(slug: string, id: string, _prev: ReportState, form: FormData): Promise<ReportState> {
+  await requireMember(slug);
+  const supabase = await createClient();
+  const body = String(form.get("body") ?? "").trim();
+  if (body.length < 2) return { error: "Please write a short note for the office." };
+  if (body.length > 2000) return { error: "Please keep the note under 2,000 characters." };
+  const { error } = await supabase.rpc("add_owner_note", { p_complaint: id, p_body: body });
+  if (error) return { error: "Your note could not be sent. Please try again." };
+  revalidatePath(`/${slug}/report/${id}`);
+  redirect(`/${slug}/report/${id}?noted=1`);
 }

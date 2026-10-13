@@ -15,7 +15,7 @@ export function DateTile({ date, timeZone, size = "md", muted = false, className
       className,
     )}>
       <span className={clsx("text-xs font-medium uppercase tracking-wide", muted ? "text-muted" : "text-brand-text")}>
-        {inZone(date, timeZone, { month: "short" })}
+        {inZone(date, timeZone, { month: "short" }).slice(0, 3)}
       </span>
       <span className={clsx("font-semibold leading-tight tabular", size === "sm" ? "text-lg" : size === "lg" ? "text-2xl" : "text-xl")}>
         {inZone(date, timeZone, { day: "numeric" })}

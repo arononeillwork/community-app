@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/community";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { dayInput } from "@/components/admin/format";
 import { EMAIL, PHONE, UUID, flatLabel, grantAccess, isCommunityPerson, readOccupancy, text, type Occupancy } from "./occupancy";
 
@@ -56,36 +57,104 @@ export async function invitePerson(slug: string, _prev: PeopleFormState, form: F
     if (!(await flatLabel(supabase, s, occ.unitId))) return { error: "Please choose a flat." };
   }
 
-  // Service role, admins only: find an existing account by email, or send an invite.
+  // Service role, admins only. profiles.email mirrors the confirmed sign-in address and can't be edited by users.
   const admin = createAdminClient();
   const { data: existing } = await admin.from("profiles").select("id").ilike("email", escapeLike(email)).limit(1).maybeSingle();
   let profileId = existing?.id as string | undefined;
-  let invited = false;
 
+  // Someone who already belongs to this community: add the role or flat straight away.
+  if (profileId) {
+    const { count } = await admin.from("memberships").select("id", { count: "exact", head: true })
+      .eq("community_id", s.community.id).eq("profile_id", profileId).in("status", ["active", "pending"]);
+    if (count) {
+      const err = await grantAccess(supabase, s, profileId, role, occ);
+      if (err) return { error: err };
+      refresh(slug, profileId);
+      redirect(personPath(s.community.slug, profileId, "added=1"));
+    }
+  }
+
+  // Everyone else gets an invitation they accept themselves. The office sees the same result
+  // whether or not the address already had an account, and nobody's details are shown until they join.
+  let created = false;
   if (!profileId) {
     const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-      data: { full_name: fullName },
-      redirectTo: `${siteUrl()}/${s.community.slug}/auth/callback`,
+      data: { full_name: fullName, community_name: s.community.name, invited_by: s.fullName },
+      redirectTo: joinRedirect(s.community.slug),
     });
     if (error || !data.user) {
       return { error: /rate|limit/i.test(error?.message ?? "")
         ? "Too many emails have been sent in a short time. Please wait a few minutes and try again."
-        : "The invite could not be sent. Please check the email address and try again." };
+        : "The invitation could not be sent. Please check the email address and try again." };
     }
     profileId = data.user.id;
-    invited = true;
+    created = true;
     await admin.from("profiles").update({ full_name: fullName, ...(phone ? { phone } : {}) }).eq("id", profileId);
   }
 
-  const err = await grantAccess(supabase, s, profileId, role, occ);
-  if (err) {
-    // Don't leave a half-created account behind.
-    if (invited) await admin.auth.admin.deleteUser(profileId);
-    return { error: err };
+  const { error: invErr } = await supabase.from("community_invitations").insert({
+    community_id: s.community.id,
+    profile_id: profileId,
+    email,
+    full_name: fullName,
+    role,
+    unit_id: occ?.unitId ?? null,
+    tenancy_type: occ?.relation === "tenant" ? occ.tenancyType : null,
+    start_date: occ?.relation === "tenant" ? occ.start : null,
+    end_date: occ?.relation === "tenant" ? occ.end : null,
+    invited_by: s.userId,
+  });
+  if (invErr) {
+    if (created) await admin.auth.admin.deleteUser(profileId);
+    return { error: "The invitation could not be saved. Please try again." };
   }
+  if (!created) await sendJoinLink(email, s.community.slug);
 
-  refresh(slug, profileId);
-  redirect(personPath(s.community.slug, profileId, invited ? "invited=1" : "added=1"));
+  revalidatePath(`/${slug}/admin/people`);
+  redirect(`/${s.community.slug}/admin/people?invited=${encodeURIComponent(email)}`);
+}
+
+function joinRedirect(slug: string) {
+  return `${siteUrl()}/${slug}/auth/callback?next=${encodeURIComponent(`/${slug}/join`)}`;
+}
+
+/** Email a sign-in link that lands on the invitation page (for people who already have an account). */
+async function sendJoinLink(email: string, slug: string) {
+  const anon = createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    auth: { persistSession: false, autoRefreshToken: false, flowType: "implicit" },
+  });
+  const { error } = await anon.auth.signInWithOtp({ email, options: { shouldCreateUser: false, emailRedirectTo: joinRedirect(slug) } });
+  return !error;
+}
+
+export async function resendInvitation(slug: string, invitationId: string) {
+  const s = await requireAdmin(slug);
+  const supabase = await createClient();
+  const { data: inv } = await supabase.from("community_invitations").select("email, profile_id, full_name")
+    .eq("id", invitationId).eq("community_id", s.community.id).eq("status", "pending").maybeSingle();
+  if (!inv) redirect(`/${s.community.slug}/admin/people`);
+  const admin = createAdminClient();
+  const { data } = await admin.auth.admin.getUserById(inv.profile_id);
+  let ok: boolean;
+  if (data.user && !data.user.email_confirmed_at) {
+    const { error } = await admin.auth.admin.inviteUserByEmail(inv.email, {
+      data: { full_name: inv.full_name ?? "", community_name: s.community.name, invited_by: s.fullName },
+      redirectTo: joinRedirect(s.community.slug),
+    });
+    ok = !error;
+  } else {
+    ok = await sendJoinLink(inv.email, s.community.slug);
+  }
+  redirect(`/${s.community.slug}/admin/people?${ok ? `resent=${encodeURIComponent(inv.email)}` : "error=invite_failed"}`);
+}
+
+export async function cancelInvitation(slug: string, invitationId: string) {
+  const s = await requireAdmin(slug);
+  const supabase = await createClient();
+  await supabase.from("community_invitations").update({ status: "cancelled", responded_at: new Date().toISOString() })
+    .eq("id", invitationId).eq("community_id", s.community.id).eq("status", "pending");
+  revalidatePath(`/${slug}/admin/people`);
+  redirect(`/${s.community.slug}/admin/people?cancelled=1`);
 }
 
 export async function resendInvite(slug: string, profileId: string) {
@@ -100,8 +169,8 @@ export async function resendInvite(slug: string, profileId: string) {
   if (user.email_confirmed_at) redirect(personPath(s.community.slug, profileId, "error=already_joined"));
 
   const { error } = await admin.auth.admin.inviteUserByEmail(user.email, {
-    data: { full_name: user.user_metadata?.full_name ?? "" },
-    redirectTo: `${siteUrl()}/${s.community.slug}/auth/callback`,
+    data: { full_name: user.user_metadata?.full_name ?? "", community_name: s.community.name, invited_by: s.fullName },
+    redirectTo: `${siteUrl()}/${s.community.slug}/auth/callback?next=${encodeURIComponent(`/${s.community.slug}/home`)}`,
   });
   redirect(personPath(s.community.slug, profileId, error ? "error=invite_failed" : "resent=1"));
 }

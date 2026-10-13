@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCommunity } from "@/lib/community";
+import { getCommunity, safeNext } from "@/lib/community";
 
 export type LoginState = { error?: string; sent?: string } | undefined;
 
@@ -41,21 +41,25 @@ export async function signInWithPassword(slug: string, _prev: LoginState, form: 
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error || !data.user) return { error: "That email and password did not match. Please try again." };
   if (!(await assertMember(slug))) {
+    const c = await getCommunity(slug);
+    const { data: invites } = c ? await supabase.rpc("my_invitations", { c: c.id }) : { data: null };
+    if (invites?.length) redirect(`/${slug}/join`);
     await supabase.auth.signOut({ scope: "local" });
     return { error: "You're not registered in this community. Please contact the administrator." };
   }
   await syncPrefCookies(data.user.id);
-  redirect(`/${slug}/home`);
+  redirect(safeNext(form.get("next")) ?? `/${slug}/home`);
 }
 
 export async function sendMagicLink(slug: string, _prev: LoginState, form: FormData): Promise<LoginState> {
   const supabase = await createClient();
   const email = String(form.get("email") ?? "").trim();
   if (!email) return { error: "Please enter your email address." };
+  const next = safeNext(form.get("next"));
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: { shouldCreateUser: false, emailRedirectTo: `${site}/${slug}/auth/callback` },
+    options: { shouldCreateUser: false, emailRedirectTo: `${site}/${slug}/auth/callback?next=${encodeURIComponent(next ?? `/${slug}/home`)}` },
   });
   // Don't reveal whether an address is registered.
   if (error && !/not found|signups not allowed/i.test(error.message)) return { error: "We couldn't send the email. Please try again." };

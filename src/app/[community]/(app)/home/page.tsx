@@ -104,7 +104,7 @@ export default async function HomePage({ params }: { params: Promise<{ community
           {nextMeeting ? (
             <Link href={`${base}/meetings/${nextMeeting.id}`} className="group flex gap-4 rounded-xl text-ink no-underline">
               <div className="flex w-14 shrink-0 flex-col items-center rounded-xl border border-line bg-surface-2 py-1.5">
-                <span className="text-xs font-medium uppercase tracking-wide text-brand-text">{fmt({ month: "short" })}</span>
+                <span className="text-xs font-medium uppercase tracking-wide text-brand-text">{fmt({ month: "short" }).slice(0, 3)}</span>
                 <span className="text-xl font-semibold leading-tight tabular">{fmt({ day: "numeric" })}</span>
               </div>
               <div className="min-w-0">

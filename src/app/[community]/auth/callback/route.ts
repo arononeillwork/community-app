@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { syncPrefCookies } from "../../login/actions";
+import { safeNext } from "@/lib/community";
 
 const OTP_TYPES = new Set<EmailOtpType>(["invite", "magiclink", "signup", "recovery", "email_change", "email"]);
 
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   if (userId) {
     await syncPrefCookies(userId);
-    return NextResponse.redirect(`${origin}/${community}/home`);
+    return NextResponse.redirect(`${origin}${safeNext(sp.get("next")) ?? `/${community}/home`}`);
   }
   return NextResponse.redirect(`${origin}/${community}/login?error=link`);
 }

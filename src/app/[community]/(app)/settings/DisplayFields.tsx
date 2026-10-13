@@ -24,12 +24,12 @@ export default function DisplayFields({ prefs, languages, currentScale }: { pref
               className="flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-line bg-surface px-1 py-2 transition-colors hover:bg-surface-2 has-[:checked]:border-brand has-[:checked]:bg-brand-soft has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-[color:var(--focus)]">
               <input type="radio" name="font_scale" value={v} checked={scale === v} onChange={() => setScale(v)} className="sr-only" />
               <span aria-hidden className="font-medium leading-none text-ink" style={{ fontSize: `${0.85 + ((v - 100) / 100) * 0.7}rem` }}>A</span>
-              <span className="whitespace-nowrap text-sm text-muted tabular">{v} %</span>
+              <span className="whitespace-nowrap text-sm text-muted tabular">{v}%</span>
             </label>
           ))}
         </div>
         <div className="mt-3 rounded-xl bg-surface-2 px-4 py-3 ring-1 ring-inset ring-line" aria-live="polite">
-          <p className="text-sm text-muted">Preview at {scale} %</p>
+          <p className="text-sm text-muted">Preview at {scale}%</p>
           <p className="mt-1 leading-snug text-ink" style={{ fontSize: previewSize }}>
             The pool is open from 10:00 to 20:00 until the end of October.
           </p>

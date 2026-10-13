@@ -1,19 +1,19 @@
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
-import { getCommunityOr404 } from "@/lib/community";
+import { getCommunityOr404, safeNext } from "@/lib/community";
 import LoginForms from "./LoginForms";
 
 export const metadata = { title: "Sign in" };
 
 export default async function LoginPage({ params, searchParams }: {
   params: Promise<{ community: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; next?: string }>;
 }) {
   const { community } = await params;
-  const { error } = await searchParams;
+  const { error, next } = await searchParams;
   const c = await getCommunityOr404(community);
   const initialError = error === "not_member" ? "You're not registered in this community. Please contact the administrator."
-    : error === "link" ? "That sign-in link has expired. Please ask for a new one." : undefined;
+    : error === "link" ? "That link didn't work. It may have expired or already been used. Enter your email below and we'll send you a new one." : undefined;
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10"
@@ -27,7 +27,7 @@ export default async function LoginPage({ params, searchParams }: {
               <p className="mt-1 text-[0.9375rem] text-muted">to {c.name}</p>
             </div>
           </div>
-          <LoginForms slug={c.slug} initialError={initialError} />
+          <LoginForms slug={c.slug} initialError={initialError} next={safeNext(next) ?? undefined} />
         </div>
         <p className="mt-5 text-center">
           <Link href={`/${c.slug}`} className="inline-flex items-center gap-1 text-[0.9375rem] font-medium text-muted no-underline hover:text-ink">

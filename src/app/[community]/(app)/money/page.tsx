@@ -91,16 +91,16 @@ export default async function MoneyPage({ params, searchParams }: {
               sub={isCurrent ? `1 Jan to ${date(today).replace(/ \d{4}$/, "")}` : "The whole year"} />
             <Stat icon={Wallet} label={`Budget for ${year}`} value={budget > 0 ? moneyShort(budget, cur) : "None"}
               sub={budget > 0 ? "Agreed at the AGM" : "No budget was recorded"} />
-            <Stat icon={Scale} label="Budget used" value={budget > 0 ? `${used} %` : "–"} tone={used > 100 ? "warn" : undefined}
+            <Stat icon={Scale} label="Budget used" value={budget > 0 ? `${used}%` : "–"} tone={used > 100 ? "warn" : undefined}
               sub={budget <= 0 ? "Nothing to compare with"
-                : isCurrent ? `${yearGone} % of the year has passed`
+                : isCurrent ? `${yearGone}% of the year has passed`
                 : spent > budget ? `${moneyShort(spent - budget, cur)} over budget` : `${moneyShort(budget - spent, cur)} under budget`} />
           </div>
 
           {s.isOwner && share > 0 && budget > 0 && (
             <Card className="border-brand-line">
               <SectionHeader icon={PieChart} title="Your share"
-                description={<>Based on your {flats > 1 ? "flats'" : "flat's"} share of the costs ({shareText} %). Your actual fees are under <Link href={`${base}/my-units`} className="font-medium">My flat</Link>.</>} />
+                description={<>Based on your {flats > 1 ? "flats'" : "flat's"} share of the costs ({shareText}%). Your actual fees are under <Link href={`${base}/my-units`} className="font-medium">My flat</Link>.</>} />
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="rounded-xl bg-surface-2 px-4 py-3.5 ring-1 ring-inset ring-line">
                   <div className="text-sm text-muted">Of the {year} budget</div>
@@ -110,7 +110,7 @@ export default async function MoneyPage({ params, searchParams }: {
                 <div className="rounded-xl bg-surface-2 px-4 py-3.5 ring-1 ring-inset ring-line">
                   <div className="text-sm text-muted">{isCurrent ? "Of what has been spent so far" : `Of what was spent in ${year}`}</div>
                   <div className="mt-1 text-[1.5rem] font-semibold leading-tight">≈ {money(Math.round((spent * share) / 100), cur)}</div>
-                  <div className="mt-0.5 text-sm text-muted">{shareText} % of {moneyShort(spent, cur)}</div>
+                  <div className="mt-0.5 text-sm text-muted">{shareText}% of {moneyShort(spent, cur)}</div>
                 </div>
               </div>
             </Card>
@@ -137,10 +137,10 @@ export default async function MoneyPage({ params, searchParams }: {
                     <div className="mt-1.5 flex flex-wrap justify-between gap-x-3 gap-y-0.5 text-sm text-muted tabular">
                       <span className={over ? "text-warn" : undefined}>
                         {over ? `${moneyShort(r.actual_cents - r.budget_cents, cur)} over the ${moneyShort(r.budget_cents, cur)} budget`
-                          : r.budget_cents > 0 ? `${pct(r.actual_cents, r.budget_cents)} % of ${moneyShort(r.budget_cents, cur)} budget`
+                          : r.budget_cents > 0 ? `${pct(r.actual_cents, r.budget_cents)}% of ${moneyShort(r.budget_cents, cur)} budget`
                           : "Not in the budget"}
                       </span>
-                      <span>{pct(r.actual_cents, spent)} % of all spending</span>
+                      <span>{pct(r.actual_cents, spent)}% of all spending</span>
                     </div>
                   </li>
                 );

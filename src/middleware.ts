@@ -20,12 +20,16 @@ export async function middleware(request: NextRequest) {
     slug = await slugForCustomDomain(host);
   }
 
+  // The path the person asked for, so a sign-in redirect can bring them back to it.
+  const forwarded = new Headers(request.headers);
+  forwarded.set("x-path", request.nextUrl.pathname + request.nextUrl.search);
+
   let response: NextResponse;
   if (slug && !url.pathname.startsWith(`/${slug}`)) {
     url.pathname = `/${slug}${url.pathname === "/" ? "" : url.pathname}`;
-    response = NextResponse.rewrite(url);
+    response = NextResponse.rewrite(url, { request: { headers: forwarded } });
   } else {
-    response = NextResponse.next({ request });
+    response = NextResponse.next({ request: { headers: forwarded } });
   }
 
   const supabase = createServerClient(

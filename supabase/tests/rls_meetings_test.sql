@@ -159,8 +159,8 @@ begin;
 select pg_temp.login('admin@oceanagardens.test');
 insert into meetings (community_id, title, meeting_type, starts_at, location)
 values ('0cea0a00-0000-4000-8000-000000000001', 'RLS test meeting', 'committee', now() + interval '10 days', 'Community room');
-select pg_temp.check((select count(*) from notifications n join meetings m on n.link = '/meetings/' || m.id where m.title = 'RLS test meeting') = 1,
-  'admin reads only their own copy of the meeting notice');
+select pg_temp.check((select count(*) from notifications n join meetings m on n.link = '/meetings/' || m.id where m.title = 'RLS test meeting') = 0,
+  'the admin who created a meeting is not alerted about it themselves');
 select pg_temp.check((select count(*) from meeting_rsvps where meeting_id = (select upcoming from fx)) > 0, 'admin reads RSVPs');
 select pg_temp.check((select count(*) from profiles p join meeting_rsvps r on r.profile_id = p.id where r.meeting_id = (select upcoming from fx)) > 0,
   'admin can see who replied');
@@ -169,8 +169,9 @@ where id = (select open_topic from fx);
 select pg_temp.check((select status from meeting_topics where id = (select open_topic from fx)) = 'on_agenda', 'admin can put a topic on the agenda');
 reset role;
 select pg_temp.check((select count(*) from notifications n join meetings m on n.link = '/meetings/' || m.id where m.title = 'RLS test meeting')
-  = (select count(distinct profile_id) from memberships where community_id = '0cea0a00-0000-4000-8000-000000000001' and status = 'active'),
-  'a new meeting notifies every active member');
+  = (select count(distinct profile_id) from memberships where community_id = '0cea0a00-0000-4000-8000-000000000001' and status = 'active'
+       and profile_id <> (select id from profiles where email = 'admin@oceanagardens.test')),
+  'a new meeting notifies every active member except the person who created it');
 rollback;
 
 -- ---------------------------------------------------------------- meeting notices
@@ -189,8 +190,9 @@ select pg_temp.check((select count(*) from notifications n join meetings m on n.
 update meetings set status = 'cancelled' where title = 'Notice test: upcoming';
 select pg_temp.check((select count(*) from notifications n join meetings m on n.link = '/meetings/' || m.id
   where m.title = 'Notice test: upcoming' and n.title like 'Cancelled:%')
-  = (select count(distinct profile_id) from memberships where community_id = '0cea0a00-0000-4000-8000-000000000001' and status = 'active'),
-  'a cancellation still notifies every active member');
+  = (select count(distinct profile_id) from memberships where community_id = '0cea0a00-0000-4000-8000-000000000001' and status = 'active'
+       and profile_id <> (select id from profiles where email = 'admin@oceanagardens.test')),
+  'a cancellation still notifies every active member except the person who cancelled it');
 rollback;
 
 -- ---------------------------------------------------------------- other community

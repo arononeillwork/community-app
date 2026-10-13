@@ -188,7 +188,7 @@ export default async function MyUnitsPage({ params, searchParams }: {
 
               <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-px border-y border-line bg-line">
                 {[
-                  { k: "Share of costs", v: `${Number(u.coefficient).toLocaleString("en-GB", { maximumFractionDigits: 2 })} %`, sub: "Participation share" },
+                  { k: "Share of costs", v: `${Number(u.coefficient).toLocaleString("en-GB", { maximumFractionDigits: 2 })}%`, sub: "Participation share" },
                   { k: "Due now", v: money(due, cur), sub: due > 0 ? <Badge tone="bad">Overdue</Badge> : <Badge tone="ok">Up to date</Badge> },
                   { k: "Next charge", v: next ? money(next.amount_cents - next.paid_cents, cur) : "None", sub: next ? `Due ${date(next.due_date)}` : "Nothing scheduled" },
                   { k: `Paid in ${year}`, v: money(paidThisYear(u.id), cur), sub: `of ${money(chargedThisYear(u.id), cur)} for the year` },

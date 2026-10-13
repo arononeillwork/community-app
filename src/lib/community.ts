@@ -1,5 +1,6 @@
 import "server-only";
 import { cache } from "react";
+import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
@@ -79,7 +80,10 @@ export const requireMember = cache(async (slug: string): Promise<Session> => {
   const community = await getCommunityOr404(slug);
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect(`/${slug}/login`);
+  if (!user) {
+    const next = safeNext((await headers()).get("x-path"));
+    redirect(`/${slug}/login${next ? `?next=${encodeURIComponent(next)}` : ""}`);
+  }
 
   const [{ data: memberships }, { data: profile }, { data: prefs }] = await Promise.all([
     supabase.from("memberships").select("role").eq("community_id", community.id).eq("profile_id", user.id).eq("status", "active"),
@@ -88,7 +92,11 @@ export const requireMember = cache(async (slug: string): Promise<Session> => {
   ]);
   const roles = (memberships ?? []).map((m) => m.role as Role);
   if (profile?.is_platform_admin && !roles.includes("admin")) roles.push("admin");
-  if (roles.length === 0) redirect(`/${slug}/login?error=not_member`);
+  if (roles.length === 0) {
+    // Invited but not joined yet: send them to accept the invitation.
+    const { data: invites } = await supabase.rpc("my_invitations", { c: community.id });
+    redirect(invites?.length ? `/${slug}/join` : `/${slug}/login?error=not_member`);
+  }
 
   return {
     community,
@@ -119,4 +127,11 @@ export async function requireAdmin(slug: string) {
 export function t(map: Record<string, string> | undefined | null, lang: string, fallback = "en") {
   if (!map) return "";
   return map[lang] ?? map[fallback] ?? Object.values(map)[0] ?? "";
+}
+
+/** A same-site path to return to after signing in, or null. Never another site, never the login page. */
+export function safeNext(next: unknown): string | null {
+  if (typeof next !== "string" || !next.startsWith("/") || next.startsWith("//") || next.includes("\\")) return null;
+  if (/\/login(\?|$)|\/auth\/callback/.test(next) || next.length > 500) return null;
+  return next;
 }

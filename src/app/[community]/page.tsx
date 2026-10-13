@@ -22,14 +22,14 @@ export default async function Landing({ params }: { params: Promise<{ community:
   return (
     <div className="flex min-h-screen flex-col">
       <header className="border-b border-line bg-surface">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
+        <div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-2 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             {c.branding?.logo_url && <img src={c.branding.logo_url} alt="" className="size-9 rounded-[10px]" />}
             <span className="truncate text-[1.0625rem] font-semibold tracking-tight">{c.name}</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <QuickControls languages={c.enabled_languages} current={lang} />
-            <Button href={cta.href} size="sm" className="hidden sm:inline-flex">{cta.label}</Button>
+            <span className="hidden sm:block"><Button href={cta.href} size="sm">{cta.label}</Button></span>
           </div>
         </div>
       </header>

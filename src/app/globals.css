@@ -133,6 +133,9 @@ html.hc {
 }
 
 @layer base {
+  /* Keep focused fields and #anchors clear of the sticky top bar. */
+  html { scroll-padding-top: 5rem; }
+
   body {
     background: var(--bg);
     color: var(--ink);

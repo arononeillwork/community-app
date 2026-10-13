@@ -103,7 +103,7 @@ export default async function InvoicePage({ params, searchParams }: {
           </div>
           <DefinitionList items={[
             { label: "Net amount", value: <span className="tabular">{money(inv.net_cents, cur)}</span> },
-            { label: `VAT (${rate} %)`, value: <span className="tabular">{money(inv.vat_cents, cur)}</span> },
+            { label: `VAT (${rate}%)`, value: <span className="tabular">{money(inv.vat_cents, cur)}</span> },
             { label: "Invoice date", value: date(inv.issue_date) },
             { label: "Due date", value: inv.due_date ? date(inv.due_date) : "No due date" },
             ...(inv.paid_date ? [{ label: "Paid on", value: date(inv.paid_date) }] : []),

@@ -186,7 +186,11 @@ rollback;
 
 -- ---------------------------------------------------------------- adding, changing and ending tenancies
 begin;
-select set_config('test.t', (select id::text from profiles where email = 'owner19@oceanagardens.test'), true);
+-- A brand-new account (as created by the owner's invitation), not yet a member anywhere.
+select set_config('test.t', gen_random_uuid()::text, true);
+insert into auth.users (instance_id, id, aud, role, email, raw_user_meta_data, created_at, updated_at)
+values ('00000000-0000-0000-0000-000000000000', current_setting('test.t')::uuid, 'authenticated', 'authenticated',
+        'brand.new.tenant@example.test', '{"full_name": "Brand New Tenant"}', now(), now());
 select set_config('test.a2b', (select id::text from units where label = 'A-2B'), true);
 select set_config('test.b3c', (select id::text from units where label = 'B-3C'), true);
 select pg_temp.login('owner4@oceanagardens.test');
@@ -219,7 +223,7 @@ select pg_temp.check((select status = 'pending' from tenancies where tenant_id =
 do $$ begin
   update tenancies set status = 'active' where tenant_id = current_setting('test.t')::uuid and unit_id = current_setting('test.a2b')::uuid;
   raise exception 'FAIL: owner approved their own tenancy';
-exception when raise_exception then
+exception when raise_exception or insufficient_privilege then
   if sqlerrm like 'FAIL%' then raise; end if;
 end $$;
 select pg_temp.check(true, 'only an administrator can approve a pending tenancy');

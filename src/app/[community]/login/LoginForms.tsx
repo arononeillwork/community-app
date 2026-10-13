@@ -5,11 +5,12 @@ import clsx from "clsx";
 import { sendMagicLink, signInWithPassword } from "./actions";
 import { Notice, buttonClass } from "@/components/ui";
 
-export default function LoginForms({ slug, initialError }: { slug: string; initialError?: string }) {
+export default function LoginForms({ slug, initialError, next }: { slug: string; initialError?: string; next?: string }) {
   const [mode, setMode] = useState<"link" | "password">("link");
   const [linkState, linkAction, linkPending] = useActionState(sendMagicLink.bind(null, slug), undefined);
   const [pwState, pwAction, pwPending] = useActionState(signInWithPassword.bind(null, slug), undefined);
-  const error = (mode === "link" ? linkState?.error : pwState?.error) ?? initialError;
+  // The page's own message (e.g. an expired link) disappears once the person has tried again.
+  const error = (mode === "link" ? linkState?.error : pwState?.error) ?? (linkState || pwState ? undefined : initialError);
 
   return (
     <div className="flex flex-col gap-5">
@@ -30,6 +31,7 @@ export default function LoginForms({ slug, initialError }: { slug: string; initi
           <Notice tone="ok" title="Check your email">We&apos;ve sent a sign-in link to {linkState.sent}. Open the email and tap the link.</Notice>
         ) : (
           <form action={linkAction} className="flex flex-col gap-4">
+            {next && <input type="hidden" name="next" value={next} />}
             <div className="field">
               <label htmlFor="email-link">Email address</label>
               <input id="email-link" name="email" type="email" autoComplete="email" required className="input" placeholder="you@example.com" />
@@ -42,6 +44,7 @@ export default function LoginForms({ slug, initialError }: { slug: string; initi
         )
       ) : (
         <form action={pwAction} className="flex flex-col gap-4">
+          {next && <input type="hidden" name="next" value={next} />}
           <div className="field">
             <label htmlFor="email-pw">Email address</label>
             <input id="email-pw" name="email" type="email" autoComplete="email" required className="input" placeholder="you@example.com" />

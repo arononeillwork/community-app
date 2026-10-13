@@ -40,8 +40,12 @@ select pg_temp.check((select count(*) from bin_schedules) = 5, 'tenant can read 
 select pg_temp.check((select count(*) from documents where visibility = 'admins') = 0, 'tenant cannot see admin-only documents');
 select pg_temp.check((select count(*) from documents where visibility = 'owners') = 0, 'tenant cannot see owner-only documents');
 select pg_temp.check((select count(*) from community_spend_summary('0cea0a00-0000-4000-8000-000000000001')) = 9, 'tenant can see aggregate "where the money goes"');
-select pg_temp.check((select count(*) from directory('0cea0a00-0000-4000-8000-000000000001') where is_my_owner and (email is not null)) = 1,
+select pg_temp.check((select count(*) from block_directory('0cea0a00-0000-4000-8000-000000000001') d
+                      where d.relation = 'owner' and d.phone is not null
+                        and d.unit_id in (select unit_id from tenancies where tenant_id = auth.uid() and status = 'active')) >= 1,
   'tenant sees their own landlord''s contact details');
+select pg_temp.check((select count(*) from directory('0cea0a00-0000-4000-8000-000000000001')) = 0,
+  'residents cannot use the office directory');
 select pg_temp.check((select count(*) from contact_preferences where profile_id <> auth.uid()) = 0, 'tenant cannot read other people''s contact preferences');
 select pg_temp.check((select count(*) from complaints) = (select count(*) from complaints where reporter_id = auth.uid()),
   'tenant only sees their own complaints');
