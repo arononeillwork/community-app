@@ -6,7 +6,7 @@ import { requireFinance } from "@/lib/community";
 import { createClient } from "@/lib/supabase/server";
 import { money, moneyShort, todayInput } from "@/lib/format";
 import { Badge, Button, Card, SectionHeader, Stat } from "@/components/ui";
-import FinanceToolbar from "@/components/finance/FinanceToolbar";
+import FinanceHeader from "@/components/finance/FinanceHeader";
 import MonthlySpendChart from "@/components/finance/MonthlySpendChart";
 import BudgetBars, { type BudgetRow } from "@/components/finance/BudgetBars";
 import { requiredApprovals } from "@/components/finance/invoice";
@@ -120,112 +120,113 @@ export default async function FinanceOverview({ params }: { params: Promise<{ co
   const daysLate = (due: string | null) => (due ? daysBetween(due, today) : 0);
 
   return (
-    <div className="flex flex-col gap-6">
-      <FinanceToolbar title="Overview" meta={`${year} so far`}
+    <>
+      <FinanceHeader title="Finance" eyebrow={null} intro={`How the community's money is doing in ${year}.`}
         actions={<Button href={`${base}/invoices/new`}><Receipt aria-hidden className="size-4" /> Add invoice</Button>} />
+      <div className="flex flex-col gap-6">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+          <Stat label="Spent this year" icon={Receipt} href={`${base}/invoices?view=year`}
+            value={moneyShort(spentYear, cur)} sub={`${invoicesYear} ${invoicesYear === 1 ? "invoice" : "invoices"} since 1 January`} />
+          <Stat label="Budget remaining" icon={PiggyBank} href={`${base}/budget`}
+            value={budgetTotal > 0 ? moneyShort(remaining, cur) : "No budget"}
+            tone={budgetTotal > 0 && remaining < 0 ? "bad" : undefined}
+            sub={budgetTotal > 0 ? `${usedPct}% of ${moneyShort(budgetTotal, cur)} used` : `Set the ${year} budget`} />
+          <Stat label="Awaiting approval" icon={FileCheck} href={`${base}/invoices?view=received`}
+            value={awaiting.length} tone={toApprove.length > 0 ? "warn" : undefined}
+            sub={toApprove.length > 0 ? `${toApprove.length} need${toApprove.length === 1 ? "s" : ""} your approval` : "None waiting for you"} />
+          <Stat label="Overdue invoices" icon={Clock} href={`${base}/invoices?view=overdue`}
+            value={overdue.length} tone={overdue.length > 0 ? "bad" : "ok"}
+            sub={overdue.length > 0 ? `${money(overdueTotal, cur)} past the due date` : "Everything is on time"} />
+          <Stat label="Contracts due in 90 days" icon={CalendarClock} href={`${base}/contracts`}
+            value={soon.length} tone={soon.length > 0 ? "warn" : undefined}
+            sub={nextDeadline ? `Ending or notice due · next ${shortDate(nextDeadline)}` : "No ends or notice deadlines"} />
+          <Stat label="Owner fees in arrears" icon={Home} href={`${base}/fees`}
+            value={moneyShort(arrearsTotal, cur)} tone={arrearsTotal > 0 ? "bad" : "ok"}
+            sub={arrearsFlats > 0 ? `${arrearsFlats} ${arrearsFlats === 1 ? "flat is" : "flats are"} behind` : "All flats are up to date"} />
+        </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-        <Stat label="Spent this year" icon={Receipt} href={`${base}/invoices?view=year`}
-          value={moneyShort(spentYear, cur)} sub={`${invoicesYear} ${invoicesYear === 1 ? "invoice" : "invoices"} since 1 January`} />
-        <Stat label="Budget remaining" icon={PiggyBank} href={`${base}/budget`}
-          value={budgetTotal > 0 ? moneyShort(remaining, cur) : "No budget"}
-          tone={budgetTotal > 0 && remaining < 0 ? "bad" : undefined}
-          sub={budgetTotal > 0 ? `${usedPct}% of ${moneyShort(budgetTotal, cur)} used` : `Set the ${year} budget`} />
-        <Stat label="Awaiting approval" icon={FileCheck} href={`${base}/invoices?view=received`}
-          value={awaiting.length} tone={toApprove.length > 0 ? "warn" : undefined}
-          sub={toApprove.length > 0 ? `${toApprove.length} need${toApprove.length === 1 ? "s" : ""} your approval` : "None waiting for you"} />
-        <Stat label="Overdue invoices" icon={Clock} href={`${base}/invoices?view=overdue`}
-          value={overdue.length} tone={overdue.length > 0 ? "bad" : "ok"}
-          sub={overdue.length > 0 ? `${money(overdueTotal, cur)} past the due date` : "Everything is on time"} />
-        <Stat label="Contracts due in 90 days" icon={CalendarClock} href={`${base}/contracts`}
-          value={soon.length} tone={soon.length > 0 ? "warn" : undefined}
-          sub={nextDeadline ? `Ending or notice due · next ${shortDate(nextDeadline)}` : "No ends or notice deadlines"} />
-        <Stat label="Owner fees in arrears" icon={Home} href={`${base}/fees`}
-          value={moneyShort(arrearsTotal, cur)} tone={arrearsTotal > 0 ? "bad" : "ok"}
-          sub={arrearsFlats > 0 ? `${arrearsFlats} ${arrearsFlats === 1 ? "flat is" : "flats are"} behind` : "All flats are up to date"} />
-      </div>
+        {/* Phones: what needs doing comes first. Wide screens: budget and monthly spending on the left, the to-do list on the right. */}
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-5">
+          <div className="flex min-w-0 flex-col gap-4 lg:col-span-3">
+            <Card>
+              <SectionHeader icon={Scale} title="Budget against spending" description={budgetRows.length ? `${year} budget, by category` : undefined}
+                action={<Button href={`${base}/budget`} variant="ghost" size="sm">Budget</Button>} />
+              {budgetRows.length ? (
+                <BudgetBars rows={budgetRows} yearShare={Math.min(1, yearShare)} currency={cur} />
+              ) : (
+                <div className="rounded-xl bg-surface-2 px-4 py-6 text-center">
+                  <p className="text-[0.9375rem] text-muted">There is no budget for {year} yet. Add one to compare spending by category.</p>
+                  <div className="mt-3"><Button href={`${base}/budget`} variant="secondary" size="sm">Set up the budget</Button></div>
+                </div>
+              )}
+            </Card>
 
-      {/* Phones: what needs doing comes first. Wide screens: budget and monthly spending on the left, the to-do list on the right. */}
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-5">
-        <div className="flex min-w-0 flex-col gap-4 lg:col-span-3">
-          <Card>
-            <SectionHeader icon={Scale} title="Budget against spending" description={budgetRows.length ? `${year} budget, by category` : undefined}
-              action={<Button href={`${base}/budget`} variant="ghost" size="sm">Budget</Button>} />
-            {budgetRows.length ? (
-              <BudgetBars rows={budgetRows} yearShare={Math.min(1, yearShare)} currency={cur} />
+            <Card>
+              <SectionHeader icon={BarChart3} title="Spending by month"
+                description={<>Last 12 months · <span className="tabular text-ink-2">{money(last12, cur)}</span> in total</>}
+                action={<Button href={`${base}/invoices`} variant="ghost" size="sm">Invoices</Button>} />
+              {last12 > 0 ? (
+                <MonthlySpendChart months={monthly} currency={cur} currentMonth={currentMonth} />
+              ) : (
+                <p className="rounded-xl bg-surface-2 px-4 py-6 text-center text-[0.9375rem] text-muted">
+                  No invoices in the last 12 months. Add invoices to see spending month by month.
+                </p>
+              )}
+            </Card>
+          </div>
+
+          <Card className="order-first lg:order-none lg:col-span-2" padded={false}>
+            <div className="p-5 pb-2 sm:p-6 sm:pb-2">
+              <SectionHeader icon={CheckCircle2} title="Needs your attention"
+                description={attention ? `${attention} ${attention === 1 ? "item" : "items"}` : undefined} className="!mb-0" />
+            </div>
+            {attention === 0 ? (
+              <div className="px-5 pb-6 sm:px-6">
+                <p className="rounded-xl bg-ok-soft px-4 py-3 text-[0.9375rem] text-ok">Nothing needs you right now. Invoices are approved and contracts are on track.</p>
+              </div>
             ) : (
-              <div className="rounded-xl bg-surface-2 px-4 py-6 text-center">
-                <p className="text-[0.9375rem] text-muted">There is no budget for {year} yet. Add one to compare spending by category.</p>
-                <div className="mt-3"><Button href={`${base}/budget`} variant="secondary" size="sm">Set up the budget</Button></div>
+              <div className="pb-2">
+                {toApprove.length > 0 && (
+                  <AttentionGroup title="To approve" more={toApprove.length - LIMIT} moreHref={`${base}/invoices?view=received`}>
+                    {toApprove.slice(0, LIMIT).map((i) => {
+                      const need = requiredApprovals(Number(i.total_cents), threshold);
+                      return (
+                        <AttentionItem key={i.id} href={`${base}/invoices/${i.id}`}
+                          title={i.supplier_name} meta={`${i.invoice_number} · ${i.approvals} of ${need} ${need === 1 ? "approval" : "approvals"}`}
+                          value={money(i.total_cents, cur)} badge={i.overdue ? <Badge tone="bad">Overdue</Badge> : null} />
+                      );
+                    })}
+                  </AttentionGroup>
+                )}
+                {overdueOnly.length > 0 && (
+                  <AttentionGroup title="Overdue" more={overdueOnly.length - LIMIT} moreHref={`${base}/invoices?view=overdue`}>
+                    {overdueOnly.slice(0, LIMIT).map((i) => {
+                      const late = daysLate(i.due_date);
+                      return (
+                        <AttentionItem key={i.id} href={`${base}/invoices/${i.id}`}
+                          title={i.supplier_name} meta={`${i.invoice_number} · ${late} ${late === 1 ? "day" : "days"} late`}
+                          value={money(i.total_cents, cur)} />
+                      );
+                    })}
+                  </AttentionGroup>
+                )}
+                {noticeSoon.length > 0 && (
+                  <AttentionGroup title="Notice deadlines" more={noticeSoon.length - LIMIT} moreHref={`${base}/contracts`}>
+                    {noticeSoon.slice(0, LIMIT).map((k) => (
+                      <AttentionItem key={k.id} href={`${base}/contracts/${k.id}`}
+                        title={k.title} meta={`Give notice by ${shortDate(k.notice_deadline)}`}
+                        badge={<Badge tone={(k.days_to_notice ?? 0) <= 30 ? "warn" : "neutral"}>
+                          {k.days_to_notice === 0 ? "Today" : `${k.days_to_notice} ${k.days_to_notice === 1 ? "day" : "days"}`}
+                        </Badge>} />
+                    ))}
+                  </AttentionGroup>
+                )}
               </div>
             )}
           </Card>
-
-          <Card>
-            <SectionHeader icon={BarChart3} title="Spending by month"
-              description={<>Last 12 months · <span className="tabular text-ink-2">{money(last12, cur)}</span> in total</>}
-              action={<Button href={`${base}/invoices`} variant="ghost" size="sm">Invoices</Button>} />
-            {last12 > 0 ? (
-              <MonthlySpendChart months={monthly} currency={cur} currentMonth={currentMonth} />
-            ) : (
-              <p className="rounded-xl bg-surface-2 px-4 py-6 text-center text-[0.9375rem] text-muted">
-                No invoices in the last 12 months. Add invoices to see spending month by month.
-              </p>
-            )}
-          </Card>
         </div>
-
-        <Card className="order-first lg:order-none lg:col-span-2" padded={false}>
-          <div className="p-5 pb-2 sm:p-6 sm:pb-2">
-            <SectionHeader icon={CheckCircle2} title="Needs your attention"
-              description={attention ? `${attention} ${attention === 1 ? "item" : "items"}` : undefined} className="!mb-0" />
-          </div>
-          {attention === 0 ? (
-            <div className="px-5 pb-6 sm:px-6">
-              <p className="rounded-xl bg-ok-soft px-4 py-3 text-[0.9375rem] text-ok">Nothing needs you right now. Invoices are approved and contracts are on track.</p>
-            </div>
-          ) : (
-            <div className="pb-2">
-              {toApprove.length > 0 && (
-                <AttentionGroup title="To approve" more={toApprove.length - LIMIT} moreHref={`${base}/invoices?view=received`}>
-                  {toApprove.slice(0, LIMIT).map((i) => {
-                    const need = requiredApprovals(Number(i.total_cents), threshold);
-                    return (
-                      <AttentionItem key={i.id} href={`${base}/invoices/${i.id}`}
-                        title={i.supplier_name} meta={`${i.invoice_number} · ${i.approvals} of ${need} ${need === 1 ? "approval" : "approvals"}`}
-                        value={money(i.total_cents, cur)} badge={i.overdue ? <Badge tone="bad">Overdue</Badge> : null} />
-                    );
-                  })}
-                </AttentionGroup>
-              )}
-              {overdueOnly.length > 0 && (
-                <AttentionGroup title="Overdue" more={overdueOnly.length - LIMIT} moreHref={`${base}/invoices?view=overdue`}>
-                  {overdueOnly.slice(0, LIMIT).map((i) => {
-                    const late = daysLate(i.due_date);
-                    return (
-                      <AttentionItem key={i.id} href={`${base}/invoices/${i.id}`}
-                        title={i.supplier_name} meta={`${i.invoice_number} · ${late} ${late === 1 ? "day" : "days"} late`}
-                        value={money(i.total_cents, cur)} />
-                    );
-                  })}
-                </AttentionGroup>
-              )}
-              {noticeSoon.length > 0 && (
-                <AttentionGroup title="Notice deadlines" more={noticeSoon.length - LIMIT} moreHref={`${base}/contracts`}>
-                  {noticeSoon.slice(0, LIMIT).map((k) => (
-                    <AttentionItem key={k.id} href={`${base}/contracts/${k.id}`}
-                      title={k.title} meta={`Give notice by ${shortDate(k.notice_deadline)}`}
-                      badge={<Badge tone={(k.days_to_notice ?? 0) <= 30 ? "warn" : "neutral"}>
-                        {k.days_to_notice === 0 ? "Today" : `${k.days_to_notice} ${k.days_to_notice === 1 ? "day" : "days"}`}
-                      </Badge>} />
-                  ))}
-                </AttentionGroup>
-              )}
-            </div>
-          )}
-        </Card>
       </div>
-    </div>
+    </>
   );
 }
 

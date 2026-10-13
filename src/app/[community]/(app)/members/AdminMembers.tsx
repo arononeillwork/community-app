@@ -5,21 +5,26 @@ import { Avatar, Badge, Card, PageHeader, SectionHeader, Stat, TabLinks } from "
 import { ContactActions, telHref } from "@/components/contact";
 import DataTable, { type Column } from "@/components/DataTable";
 import BlockDirectory from "@/components/people/BlockDirectory";
+import MemberFinder, { type FinderItem } from "@/components/people/MemberFinder";
 import { KEY_CONTACT_COLUMNS, KeyContactLine, type KeyContact } from "@/components/people/KeyContactLine";
 import { loadPeople, titlesByPerson } from "@/components/people/data";
-import { METHOD_SHORT, TENANCY_LABELS, badgesFor } from "@/components/people/types";
+import { METHOD_SHORT, TENANCY_LABELS, badgesFor, floorName, type DirRow } from "@/components/people/types";
 
 const ROLE_NAMES: Record<string, string> = { admin: "Administrator", treasurer: "Treasurer", owner: "Owner", tenant: "Tenant" };
 
 type Membership = { profile_id: string; role: string; profile: { full_name: string; email: string | null; phone: string | null } | null };
 
-/** Administrators: every block, every contact detail, and a searchable list of everyone. */
+const byLabel = (a: string, b: string) => a.localeCompare(b, "en", { numeric: true });
+
+/** Administrators: a search across every block, every block floor by floor, and a list of everyone (one row per person). */
 export default async function AdminMembers({ s, view, blockId }: { s: Session; view: "blocks" | "list"; blockId?: string }) {
   const supabase = await createClient();
   const c = s.community.id;
   const base = `/${s.community.slug}`;
   const { rows, blocks, units, titles } = await loadPeople(supabase, c);
-  const active = blocks.find((b) => b.building_id === blockId) ?? blocks[0];
+  // Open on the administrator's own block if they live here, otherwise the first block.
+  const ownBlock = rows.find((r) => r.is_me)?.building_id;
+  const active = blocks.find((b) => b.building_id === blockId) ?? blocks.find((b) => b.building_id === ownBlock) ?? blocks[0];
 
   const [{ data: memberships }, { data: reps }] = await Promise.all([
     supabase.from("memberships").select("profile_id, role, profile:profiles(full_name, email, phone)")
@@ -42,10 +47,77 @@ export default async function AdminMembers({ s, view, blockId }: { s: Session; v
   }
   const notLinked = [...loose.values()].sort((a, b) => a.name.localeCompare(b.name));
 
+  const everyone = inFlats.size + notLinked.length;
+
+  // One row per person with all their flats, so the list, the "Everyone" tab and the People number agree.
+  const byPerson = new Map<string, DirRow[]>();
+  for (const r of rows) byPerson.set(r.profile_id, [...(byPerson.get(r.profile_id) ?? []), r]);
+  const listRows = [
+    ...[...byPerson.values()].map((flats) => {
+      const p = flats[0];
+      const labels = [...new Set(flats.map((f) => f.unit_label))].sort(byLabel);
+      const relations = new Set(flats.map((f) => f.relation));
+      const tenancy = [...new Set(flats.map((f) => f.tenancy_type).filter((t): t is string => !!t))].map((t) => TENANCY_LABELS[t] ?? "Other");
+      const badges = [...new Set(flats.flatMap((f) => badgesFor(held.get(p.profile_id) ?? [], p.roles, f.building_id)))];
+      return {
+        id: p.profile_id,
+        name: p.full_name,
+        // One flat: straight to it (neighbours and all). Several: the person's page, which links each flat.
+        link: labels.length === 1 ? `${base}/members/flat/${p.unit_id}` : `${base}/admin/people/${p.profile_id}`,
+        titles: badges.join(" · "),
+        flat: labels.join(", "),
+        block: [...new Set(flats.map((f) => f.building_name))].sort(byLabel).join(", "),
+        relation: relations.size > 1 ? "Owner and tenant" : relations.has("owner") ? "Owner" : "Tenant",
+        tenancy: tenancy.join(", "),
+        phone: p.phone,
+        tel: p.phone ? telHref(p.phone) : null,
+        email: p.email,
+        method: p.preferred_method ? METHOD_SHORT[p.preferred_method] : null,
+      };
+    }),
+    ...notLinked.map((m) => ({
+      id: m.id,
+      name: m.name,
+      link: `${base}/admin/people/${m.id}`,
+      titles: m.roles.map((r) => ROLE_NAMES[r] ?? r).join(" · "),
+      flat: "",
+      block: "",
+      relation: "No flat",
+      tenancy: "",
+      phone: m.phone,
+      tel: m.phone ? telHref(m.phone) : null,
+      email: m.email,
+      method: null,
+    })),
+  ];
+
+  // Everything the cross-block finder can jump to: every flat, and members without one.
+  const finder: FinderItem[] = [
+    ...units.map((u) => {
+      const block = blocks.find((b) => b.building_id === u.building_id)?.building_name ?? "No block";
+      return {
+        href: `${base}/members/flat/${u.id}`,
+        kind: "flat" as const,
+        title: u.label,
+        where: `${block} · ${floorName(u.floor)}`,
+        people: rows.filter((r) => r.unit_id === u.id).map((r) => ({
+          name: r.full_name, relation: r.relation === "owner" ? "owner" : "tenant", digits: (r.phone ?? "").replace(/\D/g, ""),
+        })),
+      };
+    }),
+    ...notLinked.map((m) => ({
+      href: `${base}/admin/people/${m.id}`,
+      kind: "person" as const,
+      title: m.name,
+      where: [...m.roles.map((r) => ROLE_NAMES[r] ?? r), "no flat"].join(" · "),
+      people: [{ name: m.name, relation: "no flat", digits: (m.phone ?? "").replace(/\D/g, "") }],
+    })),
+  ];
+
   const rentedFlats = new Set(rows.filter((r) => r.relation === "tenant").map((r) => r.unit_id)).size;
   // "Everyone" comes first so it stays visible on phones, where the tab row scrolls.
   const tabs = [
-    { href: `${base}/members?view=list`, label: "Everyone", count: inFlats.size, active: view === "list" },
+    { href: `${base}/members?view=list`, label: "Everyone", count: everyone, active: view === "list" },
     ...blocks.map((b) => ({
       href: `${base}/members?block=${b.building_id}`, label: b.building_name, count: b.people,
       active: view === "blocks" && b.building_id === active?.building_id,
@@ -82,10 +154,13 @@ export default async function AdminMembers({ s, view, blockId }: { s: Session; v
     <>
       <PageHeader title="Members" intro={`Everyone in ${s.community.name} by block, with all contact details.`} />
 
+      {view === "blocks" && <MemberFinder items={finder} />}
+
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Blocks" value={blocks.length} icon={Building2} />
         <Stat label="Flats" value={units.length} icon={DoorOpen} />
-        <Stat label="People" value={inFlats.size} icon={Users} sub={notLinked.length ? `+ ${notLinked.length} without a flat` : undefined} />
+        <Stat label="People" value={everyone} icon={Users}
+          sub={notLinked.length ? `Including ${notLinked.length} without a flat` : "With an active account"} />
         <Stat label="Rented flats" value={rentedFlats} icon={KeyRound} sub={`of ${units.length} flats`} />
       </div>
 
@@ -95,26 +170,12 @@ export default async function AdminMembers({ s, view, blockId }: { s: Session; v
         <div className="flex flex-col gap-6">
           <DataTable
             id=""
-            rows={rows.map((r) => ({
-              id: `${r.unit_id}-${r.profile_id}-${r.relation}`,
-              unit_id: r.unit_id,
-              name: r.full_name,
-              titles: badgesFor(held.get(r.profile_id) ?? [], r.roles, r.building_id).join(" · "),
-              flat: r.unit_label,
-              block: r.building_name,
-              relation: r.relation === "owner" ? "Owner" : "Tenant",
-              tenancy: r.tenancy_type ? TENANCY_LABELS[r.tenancy_type] ?? "Other" : "",
-              phone: r.phone,
-              tel: r.phone ? telHref(r.phone) : null,
-              email: r.email,
-              method: r.preferred_method ? METHOD_SHORT[r.preferred_method] : null,
-            }))}
+            rows={listRows}
             columns={[
-              { key: "name", header: "Name", href: `${base}/members/flat/{unit_id}`, subKey: "titles" },
-              { key: "flat", header: "Flat" },
-              { key: "block", header: "Block", filter: true },
+              { key: "name", header: "Name", href: "{link}", subKey: "titles" },
+              { key: "flat", header: "Flats", subKey: "block", subHeader: "Block", nowrap: true },
               { key: "relation", header: "Relation", filter: true, subKey: "tenancy" },
-              { key: "phone", header: "Phone", href: "{tel}" },
+              { key: "phone", header: "Phone", href: "{tel}", nowrap: true },
               { key: "email", header: "Email", href: "mailto:{email}" },
               { key: "method", header: "Prefers" },
             ] satisfies Column[]}
@@ -122,7 +183,6 @@ export default async function AdminMembers({ s, view, blockId }: { s: Session; v
             searchPlaceholder="Name, flat, phone or email"
             empty="No one matches. Try another name or flat."
           />
-          {notLinkedCard}
         </div>
       ) : active ? (
         <div className="grid items-start gap-4 lg:grid-cols-3">
@@ -134,6 +194,7 @@ export default async function AdminMembers({ s, view, blockId }: { s: Session; v
               badges={Object.fromEntries(rows.filter((r) => r.building_id === active.building_id)
                 .map((r) => [r.profile_id, badgesFor(held.get(r.profile_id) ?? [], r.roles, r.building_id)]))}
               flatHref={`${base}/members/flat/`}
+              search={false}
             />
           </div>
           <div className="flex min-w-0 flex-col gap-4">

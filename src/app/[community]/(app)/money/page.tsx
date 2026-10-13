@@ -4,7 +4,7 @@ import { requireMember } from "@/lib/community";
 import { createClient } from "@/lib/supabase/server";
 import { date, money, moneyShort, todayInput } from "@/lib/format";
 import { Badge, Button, Card, Empty, PageHeader, SectionHeader, Stat, TabLinks } from "@/components/ui";
-import { Meter } from "@/components/me/Meter";
+import { BudgetMeter, budgetStatus, needsAttention } from "@/components/finance/BudgetStatus";
 
 export const metadata = { title: "Where the money goes" };
 
@@ -69,6 +69,8 @@ export default async function MoneyPage({ params, searchParams }: {
   const shareText = share.toLocaleString("en-GB", { maximumFractionDigits: 2 });
 
   const overLines = spend.filter((r) => r.budget_cents > 0 && r.actual_cents > r.budget_cents).length;
+  // The same words and colours as the treasurer's Budget page: on track, nearly used, over budget.
+  const overall = budgetStatus(budget, spent);
 
   return (
     <>
@@ -91,7 +93,7 @@ export default async function MoneyPage({ params, searchParams }: {
               sub={isCurrent ? `1 Jan to ${date(today).replace(/ \d{4}$/, "")}` : "The whole year"} />
             <Stat icon={Wallet} label={`Budget for ${year}`} value={budget > 0 ? moneyShort(budget, cur) : "None"}
               sub={budget > 0 ? "Agreed at the AGM" : "No budget was recorded"} />
-            <Stat icon={Scale} label="Budget used" value={budget > 0 ? `${used}%` : "–"} tone={used > 100 ? "warn" : undefined}
+            <Stat icon={Scale} label="Budget used" value={budget > 0 ? `${used}%` : "–"} tone={budget > 0 && needsAttention(overall) ? overall.tone : undefined}
               sub={budget <= 0 ? "Nothing to compare with"
                 : isCurrent ? `${yearGone}% of the year has passed`
                 : spent > budget ? `${moneyShort(spent - budget, cur)} over budget` : `${moneyShort(budget - spent, cur)} under budget`} />
@@ -121,24 +123,25 @@ export default async function MoneyPage({ params, searchParams }: {
               description={overLines > 0 ? `${overLines} ${overLines === 1 ? "category is" : "categories are"} over budget.` : budget > 0 ? "Every category is within its budget." : undefined} />
             <ul className="flex flex-col gap-5">
               {spend.map((r) => {
-                const over = r.budget_cents > 0 && r.actual_cents > r.budget_cents;
+                const status = budgetStatus(r.budget_cents, r.actual_cents);
+                const over = status.state === "over";
                 return (
                   <li key={r.category_name}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
                         <span aria-hidden className="size-2.5 shrink-0 rounded-full" style={{ background: r.color }} />
                         <span className="font-medium text-ink">{r.category_name}</span>
-                        {over && <Badge tone="warn">Over budget</Badge>}
+                        {needsAttention(status) && <Badge tone={status.tone}>{status.word}</Badge>}
                       </div>
                       <span className="shrink-0 font-medium text-ink tabular">{moneyShort(r.actual_cents, cur)}</span>
                     </div>
-                    <Meter className="mt-2" value={r.actual_cents} max={r.budget_cents}
-                      title={`${r.category_name}: ${moneyShort(r.actual_cents, cur)}${r.budget_cents > 0 ? ` of ${moneyShort(r.budget_cents, cur)}` : ""}`} />
+                    <BudgetMeter className="mt-2" budget={r.budget_cents} actual={r.actual_cents} />
                     <div className="mt-1.5 flex flex-wrap justify-between gap-x-3 gap-y-0.5 text-sm text-muted tabular">
-                      <span className={over ? "text-warn" : undefined}>
+                      {/* Without a budget, the badge already says so. */}
+                      <span className={over ? "text-bad" : undefined}>
                         {over ? `${moneyShort(r.actual_cents - r.budget_cents, cur)} over the ${moneyShort(r.budget_cents, cur)} budget`
                           : r.budget_cents > 0 ? `${pct(r.actual_cents, r.budget_cents)}% of ${moneyShort(r.budget_cents, cur)} budget`
-                          : "Not in the budget"}
+                          : null}
                       </span>
                       <span>{pct(r.actual_cents, spent)}% of all spending</span>
                     </div>

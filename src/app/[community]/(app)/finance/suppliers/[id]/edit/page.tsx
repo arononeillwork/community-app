@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireFinance } from "@/lib/community";
 import { createClient } from "@/lib/supabase/server";
-import FinanceToolbar from "@/components/finance/FinanceToolbar";
+import FinanceHeader from "@/components/finance/FinanceHeader";
 import SupplierForm from "../../SupplierForm";
 import { updateSupplier } from "../../actions";
 import { serviceTypes } from "../../service-types";
@@ -27,8 +27,8 @@ export default async function EditSupplierPage({ params }: { params: Promise<{ c
   const { iban_masked, ...initial } = sup;
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <FinanceToolbar title={`Edit ${sup.name}`} back={{ href: `${base}/${id}`, label: "Supplier" }} />
+    <div className="max-w-3xl">
+      <FinanceHeader title={`Edit ${sup.name}`} back={{ href: `${base}/${id}`, label: sup.name }} />
       <SupplierForm action={updateSupplier.bind(null, s.community.slug, id)} slug={s.community.slug} serviceTypes={types}
         initial={initial} maskedIban={iban_masked ?? null} editing cancelHref={`${base}/${id}`} submitLabel="Save changes" />
     </div>

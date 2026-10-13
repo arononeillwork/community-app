@@ -5,7 +5,7 @@ import { requireFinance } from "@/lib/community";
 import { createClient } from "@/lib/supabase/server";
 import { date, money, todayInput } from "@/lib/format";
 import { Badge, Button, Card, Empty, Notice } from "@/components/ui";
-import { Toolbar } from "@/components/finance-ops/Toolbar";
+import FinanceHeader from "@/components/finance/FinanceHeader";
 import { SubmitButton } from "@/components/finance-ops/SubmitButton";
 import { daysBetween, displayFileName, jobAnchor, relativeDays } from "@/components/finance-ops/dates";
 import { signedFinanceUrls } from "@/components/finance-ops/storage";
@@ -51,9 +51,9 @@ export default async function QuotesPage({ params, searchParams }: {
 
   return (
     <>
-      <Toolbar
+      <FinanceHeader
         title="Quotes"
-        description={groups.length ? `${groups.length} ${groups.length === 1 ? "job" : "jobs"} · ${groups.filter((g) => !g.chosen).length} to decide` : "Compare prices before choosing a supplier."}
+        intro={groups.length ? `${groups.length} ${groups.length === 1 ? "job" : "jobs"} · ${groups.filter((g) => !g.chosen).length} to decide` : "Compare prices before choosing a supplier."}
         actions={<Button href={`${base}/new`}><Plus aria-hidden className="size-4" /> Add a quote</Button>}
       />
 
@@ -77,7 +77,7 @@ export default async function QuotesPage({ params, searchParams }: {
               <div id={jobAnchor(g.title)} className="mb-4 flex scroll-mt-24 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-[1.0625rem] font-semibold leading-snug">{g.title}</h3>
+                    <h2 className="text-[1.0625rem] font-semibold leading-snug">{g.title}</h2>
                     {g.chosen ? <Badge tone="ok">Decided</Badge> : <Badge tone="warn">To decide</Badge>}
                   </div>
                   <p className="mt-0.5 text-[0.9375rem] text-muted">

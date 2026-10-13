@@ -60,6 +60,10 @@ export default async function AdminOverview({ params, searchParams }: {
   const oldReports = (oldest.data ?? []) as unknown as OldReport[];
   const unanswered = (questions.data ?? []) as unknown as Question[];
 
+  // The same saved views as on the Reports page, so the list shows exactly what was counted here.
+  const openView = `${base}/report?f_state=Open`;
+  const urgentView = `${base}/report?f_state=Open&f_urgency=Yes`;
+
   const links = [
     { href: `${base}/admin/people`, label: "People", text: "Members, invites and roles", icon: Users },
     { href: `${base}/contacts`, label: "Key contacts", text: "President, concierge, office", icon: Contact },
@@ -81,8 +85,8 @@ export default async function AdminOverview({ params, searchParams }: {
         <Stat label="Members" value={memberCount} icon={Users} href={`${base}/admin/people`} sub="With an active account" />
         <Stat label="Flats" value={flats.count ?? 0} icon={Home} href={`${base}/admin/blocks`} sub="Across all blocks" />
         <Stat label="Rented flats" value={rented} icon={KeyRound} href={`${base}/admin/people?role=tenant`} sub="Flats with a tenant" />
-        <Stat label="Open reports" value={openReports.length} icon={AlertTriangle} href={`${base}/report`} sub="Not resolved yet" />
-        <Stat label="Urgent or high" value={urgent} icon={ShieldAlert} href={`${base}/report`} tone={urgent > 0 ? "bad" : undefined}
+        <Stat label="Open reports" value={openReports.length} icon={AlertTriangle} href={openView} sub="Not resolved yet" />
+        <Stat label="Urgent or high" value={urgent} icon={ShieldAlert} href={urgentView} tone={urgent > 0 ? "bad" : undefined}
           sub={urgent > 0 ? "Open reports to look at first" : "Nothing urgent"} />
         <Stat label="Tenancies to approve" value={pending} icon={Clock} href={`${base}/admin/people#pending`} tone={pending > 0 ? "warn" : undefined}
           sub={pending > 0 ? "Added by landlords" : "Nothing waiting"} />
@@ -113,7 +117,7 @@ export default async function AdminOverview({ params, searchParams }: {
         <Card padded={false}>
           <div className="p-5 pb-1 sm:p-6 sm:pb-1">
             <SectionHeader icon={Clock} title="Waiting longest" description="The oldest reports that are still open"
-              action={<Link href={`${base}/report`} className="text-sm font-medium no-underline hover:underline">All reports</Link>} />
+              action={<Link href={`${openView}&sort=created_at&dir=asc`} className="text-sm font-medium no-underline hover:underline">All open reports</Link>} />
           </div>
           {oldReports.length ? (
             <ul className="divide-y divide-line">

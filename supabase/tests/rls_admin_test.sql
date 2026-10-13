@@ -49,6 +49,10 @@ select pg_temp.check((select count(*) from profiles p where exists (select 1 fro
 insert into faq_entries (community_id, question, answer)
 values ('0cea0a00-0000-4000-8000-000000000001', 'Test FAQ question', 'Test FAQ answer');
 select pg_temp.check((select count(*) from faq_entries where question = 'Test FAQ question') = 1, 'admin can add an FAQ entry');
+update faq_entries set answer = 'Edited FAQ answer' where question = 'Test FAQ question';
+select pg_temp.check((select answer from faq_entries where question = 'Test FAQ question') = 'Edited FAQ answer', 'admin can edit an FAQ answer');
+delete from faq_entries where question = 'Test FAQ question';
+select pg_temp.check((select count(*) from faq_entries where question = 'Test FAQ question') = 0, 'admin can delete an FAQ entry');
 select pg_temp.check(resolve_unanswered_question('0cea0a00-0000-4000-8000-000000000001', current_setting('test.q')::uuid),
   'admin can mark a question as answered');
 select pg_temp.check((select count(*) from assistant_messages where id = current_setting('test.q')::uuid) = 0,
@@ -147,6 +151,10 @@ do $$ begin
 exception when insufficient_privilege then null;
 end $$;
 select pg_temp.check(true, 'owner cannot add FAQ entries');
+update faq_entries set answer = 'Hacked' where community_id = '0cea0a00-0000-4000-8000-000000000001';
+delete from faq_entries where community_id = '0cea0a00-0000-4000-8000-000000000001';
+select pg_temp.check((select count(*) from faq_entries where community_id = '0cea0a00-0000-4000-8000-000000000001' and answer <> 'Hacked') > 0
+  and (select count(*) from faq_entries where answer = 'Hacked') = 0, 'owner cannot edit or delete FAQ entries');
 do $$ begin
   insert into memberships (community_id, profile_id, role) values ('0cea0a00-0000-4000-8000-000000000001', auth.uid(), 'admin');
   raise exception 'FAIL: owner made themselves admin';
@@ -181,6 +189,8 @@ select pg_temp.check((select count(*) from tenancies where community_id = '0cea0
 update units set bedrooms = 9 where community_id = '0cea0a00-0000-4000-8000-000000000001';
 update community_branding set primary_color = '#000000' where community_id = '0cea0a00-0000-4000-8000-000000000001';
 update communities set name = 'Hacked' where id = '0cea0a00-0000-4000-8000-000000000001';
+update faq_entries set answer = 'Hacked' where community_id = '0cea0a00-0000-4000-8000-000000000001';
+delete from faq_entries where community_id = '0cea0a00-0000-4000-8000-000000000001';
 do $$ begin
   insert into memberships (community_id, profile_id, role) values ('0cea0a00-0000-4000-8000-000000000001', auth.uid(), 'admin');
   raise exception 'FAIL: Demo Heights admin joined Oceana as admin';
@@ -195,6 +205,8 @@ select pg_temp.check((select primary_color from community_branding where communi
   'Demo Heights admin cannot change Oceana branding');
 select pg_temp.check((select name from communities where id = '0cea0a00-0000-4000-8000-000000000001') <> 'Hacked',
   'Demo Heights admin cannot rename Oceana');
+select pg_temp.check((select count(*) from faq_entries where community_id = '0cea0a00-0000-4000-8000-000000000001' and answer <> 'Hacked') > 0
+  and (select count(*) from faq_entries where answer = 'Hacked') = 0, 'Demo Heights admin cannot edit or delete Oceana FAQ entries');
 rollback;
 
 \echo 'All administration RLS tests passed'

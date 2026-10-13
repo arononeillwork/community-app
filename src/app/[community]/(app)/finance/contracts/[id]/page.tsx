@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { date, money, todayInput } from "@/lib/format";
 import { Button, Card, DefinitionList, Notice, SectionHeader, StatusBadge } from "@/components/ui";
 import { ContactActions } from "@/components/contact";
-import { Toolbar } from "@/components/finance-ops/Toolbar";
+import FinanceHeader from "@/components/finance/FinanceHeader";
 import { ConfirmDialog } from "@/components/finance-ops/ConfirmDialog";
 import { Flash } from "@/components/finance-ops/Flash";
 import { daysBetween, displayFileName, lengthLabel, monthsBetween, perPeriod, relativeDays, FREQUENCIES } from "@/components/finance-ops/dates";
@@ -90,12 +90,12 @@ export default async function ContractPage({ params, searchParams }: {
   const endDefault = k.end_date && k.end_date < today ? k.end_date : today < k.start_date ? k.start_date : today;
 
   return (
-    <div className="flex flex-col gap-5">
-      <Toolbar
+    <>
+      <FinanceHeader
         back={{ href: base, label: "Contracts" }}
         title={k.title}
         badge={<StatusBadge value={k.status} />}
-        description={supplier ? `${supplier.name} · ${supplier.service_type}` : undefined}
+        intro={supplier ? `${supplier.name} · ${supplier.service_type}` : undefined}
         actions={
           <>
             <Button href={`${base}/${k.id}/edit`} variant="secondary"><Pencil aria-hidden className="size-4" /> Edit</Button>
@@ -119,131 +119,132 @@ export default async function ContractPage({ params, searchParams }: {
           </>
         }
       />
-
-      {((saved && SAVED[saved]) || error) && (
-        <Flash>
-          {saved && SAVED[saved] && <Notice tone="ok">{SAVED[saved]}</Notice>}
-          {error && <Notice tone="bad">{error === "end" ? "The contract could not be ended. Please try again." : "That did not work. Please try again."}</Notice>}
-        </Flash>
-      )}
-      {active && k.auto_renew && noticeDays != null && noticeDays >= 0 && noticeDays <= 60 && (
-        <Notice tone={noticeDays <= 30 ? "bad" : "warn"} title={`Notice deadline ${relativeDays(noticeDays)}`}>
-          This contract renews automatically on {date(k.end_date)} unless notice is given by {date(noticeDeadline)}.
-        </Notice>
-      )}
-      {active && endDays != null && endDays < 0 && (
-        k.auto_renew ? (
-          <Notice tone="info" title="This contract has renewed">
-            It renewed automatically on {date(k.end_date)}. <Link href={`${base}/${k.id}/edit`}>Update the dates</Link> to the new term so the notice deadline stays right.
+      <div className="flex flex-col gap-5">
+        {((saved && SAVED[saved]) || error) && (
+          <Flash>
+            {saved && SAVED[saved] && <Notice tone="ok">{SAVED[saved]}</Notice>}
+            {error && <Notice tone="bad">{error === "end" ? "The contract could not be ended. Please try again." : "That did not work. Please try again."}</Notice>}
+          </Flash>
+        )}
+        {active && k.auto_renew && noticeDays != null && noticeDays >= 0 && noticeDays <= 60 && (
+          <Notice tone={noticeDays <= 30 ? "bad" : "warn"} title={`Notice deadline ${relativeDays(noticeDays)}`}>
+            This contract renews automatically on {date(k.end_date)} unless notice is given by {date(noticeDeadline)}.
           </Notice>
-        ) : (
-          <Notice tone="warn" title="The end date has passed">
-            This contract ended on {date(k.end_date)} but is still marked as active. Renew it, or end it so it no longer counts as active.
-          </Notice>
-        )
-      )}
+        )}
+        {active && endDays != null && endDays < 0 && (
+          k.auto_renew ? (
+            <Notice tone="info" title="This contract has renewed">
+              It renewed automatically on {date(k.end_date)}. <Link href={`${base}/${k.id}/edit`}>Update the dates</Link> to the new term so the notice deadline stays right.
+            </Notice>
+          ) : (
+            <Notice tone="warn" title="The end date has passed">
+              This contract ended on {date(k.end_date)} but is still marked as active. Renew it, or end it so it no longer counts as active.
+            </Notice>
+          )
+        )}
 
-      <div className="grid gap-5 lg:grid-cols-3">
-        <div className="flex flex-col gap-5 lg:col-span-2">
-          <Card>
-            <SectionHeader icon={CalendarClock} title="Key dates" />
-            <ul className={clsx("grid gap-3", tiles.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
-              {tiles.map((t) => (
-                <li key={t.label} className={clsx("rounded-xl px-4 py-3", t.tone === "bad" ? "bg-bad-soft" : t.tone === "warn" ? "bg-warn-soft" : "bg-surface-2")}>
-                  <div className="text-sm text-muted">{t.label}</div>
-                  <div className={clsx("mt-0.5 text-[1.25rem] font-semibold leading-snug first-letter:uppercase",
-                    t.tone === "bad" && "text-bad", t.tone === "warn" && "text-warn")}>{t.main}</div>
-                  <div className="text-sm text-muted">{t.sub}</div>
-                </li>
-              ))}
-            </ul>
-          </Card>
-
-          <Card>
-            <SectionHeader icon={FileText} title="Details" />
-            <DefinitionList items={[
-              { label: "Service", value: k.title },
-              { label: "Budget category", value: k.category?.name ?? "None" },
-              { label: "Term", value: k.end_date ? `${date(k.start_date)} to ${date(k.end_date)}` : `From ${date(k.start_date)}, rolling` },
-              { label: "Notice period", value: `${k.notice_period_days} days` },
-              { label: "Renews automatically", value: k.auto_renew ? "Yes" : "No" },
-              { label: "Price review", value: k.price_review_clause ?? <span className="text-muted">No clause recorded</span> },
-              ...(k.notes ? [{ label: "Notes", value: <span className="whitespace-pre-line">{k.notes}</span> }] : []),
-            ]} />
-          </Card>
-
-          <Card padded={false}>
-            <div className="p-5 pb-1 sm:p-6 sm:pb-1">
-              <SectionHeader icon={Receipt} title="Invoices"
-                description={list.length ? `${money(invoicedThisYear, cur)} invoiced in ${year}` : "No invoices are linked to this contract yet."} />
-            </div>
-            {list.length > 0 && (
-              <ul className="divide-y divide-line border-t border-line">
-                {list.slice(0, 6).map((i) => (
-                  <li key={i.id} className="flex items-center gap-3 px-5 py-3 sm:px-6">
-                    <div className="min-w-0 flex-1">
-                      <Link href={`/${slug}/finance/invoices/${i.id}`} className="font-medium no-underline [overflow-wrap:anywhere] hover:underline">{i.invoice_number}</Link>
-                      <div className="whitespace-nowrap text-sm text-muted">{date(i.issue_date)}</div>
-                    </div>
-                    {/* Phone: amount above the status; wider screens: status, then amount in a fixed column. */}
-                    <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row-reverse sm:items-center sm:gap-3">
-                      <div className="tabular text-right text-[0.9375rem] text-ink sm:w-24">{money(i.total_cents, cur)}</div>
-                      <StatusBadge value={i.status} />
-                    </div>
+        <div className="grid gap-5 lg:grid-cols-3">
+          <div className="flex flex-col gap-5 lg:col-span-2">
+            <Card>
+              <SectionHeader icon={CalendarClock} title="Key dates" />
+              <ul className={clsx("grid gap-3", tiles.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
+                {tiles.map((t) => (
+                  <li key={t.label} className={clsx("rounded-xl px-4 py-3", t.tone === "bad" ? "bg-bad-soft" : t.tone === "warn" ? "bg-warn-soft" : "bg-surface-2")}>
+                    <div className="text-sm text-muted">{t.label}</div>
+                    <div className={clsx("mt-0.5 text-[1.25rem] font-semibold leading-snug first-letter:uppercase",
+                      t.tone === "bad" && "text-bad", t.tone === "warn" && "text-warn")}>{t.main}</div>
+                    <div className="text-sm text-muted">{t.sub}</div>
                   </li>
                 ))}
               </ul>
-            )}
-            {list.length > 6 && (
-              <p className="border-t border-line px-5 py-3 text-sm text-muted sm:px-6">
-                Latest 6 of {list.length}. <Link href={`/${slug}/finance/invoices?q=${encodeURIComponent(supplier?.name ?? "")}`}>See all invoices</Link>
-              </p>
-            )}
-          </Card>
-        </div>
-
-        <div className="flex flex-col gap-5">
-          <Card>
-            <div className="text-sm text-muted">Price</div>
-            <div className="tabular mt-1 text-[1.75rem] font-semibold leading-none">{money(k.amount_cents, cur)}</div>
-            <div className="mt-1.5 text-[0.9375rem] text-muted">{perPeriod(k.billing_frequency)}, before VAT</div>
-            <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-line pt-4 text-[0.9375rem]">
-              <div>
-                <dt className="text-sm text-muted">{k.billing_frequency === "one_off" ? "Total" : "Per year"}</dt>
-                <dd className="tabular font-medium">{money(annual, cur)}</dd>
-              </div>
-              <div>
-                <dt className="text-sm text-muted">With {vatRate}% VAT</dt>
-                <dd className="tabular font-medium">{money(Math.round(annual * (1 + vatRate / 100)), cur)}</dd>
-              </div>
-            </dl>
-          </Card>
-
-          {supplier && (
-            <Card>
-              <SectionHeader icon={Building2} title={supplier.name} description={supplier.contact_name ?? supplier.service_type} />
-              <ContactActions name={supplier.contact_name ?? supplier.name} phone={supplier.phone} email={supplier.email} variant="buttons" />
-              {supplier.phone && <p className="tabular mt-3 text-[0.9375rem] text-ink-2">{supplier.phone}</p>}
-              {supplier.email && <p className="truncate text-[0.9375rem] text-ink-2">{supplier.email}</p>}
             </Card>
-          )}
 
-          <Card>
-            <SectionHeader icon={FileText} title="Signed contract" />
-            {k.file_path && fileUrl ? (
-              <a href={fileUrl} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-3 rounded-xl border border-line px-4 py-3 text-ink no-underline transition-colors hover:bg-surface-2">
-                <Download aria-hidden className="size-4 shrink-0 text-muted" />
-                <span className="min-w-0 truncate text-[0.9375rem] font-medium">{displayFileName(k.file_path)}</span>
-              </a>
-            ) : k.file_path ? (
-              <p className="text-[0.9375rem] text-muted">The file could not be found. Upload it again from Edit.</p>
-            ) : (
-              <p className="text-[0.9375rem] text-muted">No file yet. <Link href={`${base}/${k.id}/edit`}>Upload the signed contract</Link></p>
+            <Card>
+              <SectionHeader icon={FileText} title="Details" />
+              <DefinitionList items={[
+                { label: "Service", value: k.title },
+                { label: "Budget category", value: k.category?.name ?? "None" },
+                { label: "Term", value: k.end_date ? `${date(k.start_date)} to ${date(k.end_date)}` : `From ${date(k.start_date)}, rolling` },
+                { label: "Notice period", value: `${k.notice_period_days} days` },
+                { label: "Renews automatically", value: k.auto_renew ? "Yes" : "No" },
+                { label: "Price review", value: k.price_review_clause ?? <span className="text-muted">No clause recorded</span> },
+                ...(k.notes ? [{ label: "Notes", value: <span className="whitespace-pre-line">{k.notes}</span> }] : []),
+              ]} />
+            </Card>
+
+            <Card padded={false}>
+              <div className="p-5 pb-1 sm:p-6 sm:pb-1">
+                <SectionHeader icon={Receipt} title="Invoices"
+                  description={list.length ? `${money(invoicedThisYear, cur)} invoiced in ${year}` : "No invoices are linked to this contract yet."} />
+              </div>
+              {list.length > 0 && (
+                <ul className="divide-y divide-line border-t border-line">
+                  {list.slice(0, 6).map((i) => (
+                    <li key={i.id} className="flex items-center gap-3 px-5 py-3 sm:px-6">
+                      <div className="min-w-0 flex-1">
+                        <Link href={`/${slug}/finance/invoices/${i.id}`} className="font-medium no-underline [overflow-wrap:anywhere] hover:underline">{i.invoice_number}</Link>
+                        <div className="whitespace-nowrap text-sm text-muted">{date(i.issue_date)}</div>
+                      </div>
+                      {/* Phone: amount above the status; wider screens: status, then amount in a fixed column. */}
+                      <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row-reverse sm:items-center sm:gap-3">
+                        <div className="tabular text-right text-[0.9375rem] text-ink sm:w-24">{money(i.total_cents, cur)}</div>
+                        <StatusBadge value={i.status} />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {list.length > 6 && (
+                <p className="border-t border-line px-5 py-3 text-sm text-muted sm:px-6">
+                  Latest 6 of {list.length}. <Link href={`/${slug}/finance/invoices?q=${encodeURIComponent(supplier?.name ?? "")}`}>See all invoices</Link>
+                </p>
+              )}
+            </Card>
+          </div>
+
+          <div className="flex flex-col gap-5">
+            <Card>
+              <div className="text-sm text-muted">Price</div>
+              <div className="tabular mt-1 text-[1.75rem] font-semibold leading-none">{money(k.amount_cents, cur)}</div>
+              <div className="mt-1.5 text-[0.9375rem] text-muted">{perPeriod(k.billing_frequency)}, before VAT</div>
+              <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-line pt-4 text-[0.9375rem]">
+                <div>
+                  <dt className="text-sm text-muted">{k.billing_frequency === "one_off" ? "Total" : "Per year"}</dt>
+                  <dd className="tabular font-medium">{money(annual, cur)}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-muted">With {vatRate}% VAT</dt>
+                  <dd className="tabular font-medium">{money(Math.round(annual * (1 + vatRate / 100)), cur)}</dd>
+                </div>
+              </dl>
+            </Card>
+
+            {supplier && (
+              <Card>
+                <SectionHeader icon={Building2} title={supplier.name} description={supplier.contact_name ?? supplier.service_type} />
+                <ContactActions name={supplier.contact_name ?? supplier.name} phone={supplier.phone} email={supplier.email} variant="buttons" />
+                {supplier.phone && <p className="tabular mt-3 text-[0.9375rem] text-ink-2">{supplier.phone}</p>}
+                {supplier.email && <p className="truncate text-[0.9375rem] text-ink-2">{supplier.email}</p>}
+              </Card>
             )}
-          </Card>
+
+            <Card>
+              <SectionHeader icon={FileText} title="Signed contract" />
+              {k.file_path && fileUrl ? (
+                <a href={fileUrl} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-3 rounded-xl border border-line px-4 py-3 text-ink no-underline transition-colors hover:bg-surface-2">
+                  <Download aria-hidden className="size-4 shrink-0 text-muted" />
+                  <span className="min-w-0 truncate text-[0.9375rem] font-medium">{displayFileName(k.file_path)}</span>
+                </a>
+              ) : k.file_path ? (
+                <p className="text-[0.9375rem] text-muted">The file could not be found. Upload it again from Edit.</p>
+              ) : (
+                <p className="text-[0.9375rem] text-muted">No file yet. <Link href={`${base}/${k.id}/edit`}>Upload the signed contract</Link></p>
+              )}
+            </Card>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

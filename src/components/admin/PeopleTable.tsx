@@ -69,6 +69,15 @@ export default function PeopleTable({ rows, blocks, slug }: { rows: PersonRow[];
     { key: "status", header: "Status", type: "status" },
   ];
 
+  // Same counting as the Administration overview ("Members" = active accounts), with the rest named.
+  const count = (st: string) => rows.filter((r) => r.status === st).length;
+  const pending = count("pending");
+  const ended = count("ended");
+  const extra = [
+    pending ? { status: "pending", text: `${pending} waiting for approval` } : null,
+    ended ? { status: "ended", text: `${ended} no longer active` } : null,
+  ].filter((x): x is { status: string; text: string } => !!x);
+
   const selects = [
     { key: "role", label: "Role", value: role, options: ROLE_OPTIONS },
     { key: "block", label: "Block", value: block, options: blocks.map((b) => ({ value: b, label: b })) },
@@ -77,6 +86,16 @@ export default function PeopleTable({ rows, blocks, slug }: { rows: PersonRow[];
 
   return (
     <div className="flex flex-col gap-4">
+      <p className="text-[0.9375rem] text-muted">
+        {rows.length} {rows.length === 1 ? "person" : "people"}: {count("active")} with an active account
+        {extra.map((x, i) => (
+          <span key={x.status}>
+            {i === extra.length - 1 ? " and " : ", "}
+            <button type="button" onClick={() => set("status", x.status)}
+              className="font-medium text-brand-text underline-offset-4 hover:underline">{x.text}</button>
+          </span>
+        ))}.
+      </p>
       <div className="no-print grid grid-cols-3 gap-2 sm:gap-3" role="group" aria-label="Filter people">
         {selects.map((f) => (
           <div key={f.key} className="field min-w-0">

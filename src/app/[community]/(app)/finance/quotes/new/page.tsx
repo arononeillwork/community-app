@@ -1,6 +1,6 @@
 import { requireFinance } from "@/lib/community";
 import { createClient } from "@/lib/supabase/server";
-import { Toolbar } from "@/components/finance-ops/Toolbar";
+import FinanceHeader from "@/components/finance/FinanceHeader";
 import { jobAnchor } from "@/components/finance-ops/dates";
 import QuoteForm from "./QuoteForm";
 
@@ -25,8 +25,8 @@ export default async function NewQuotePage({ params, searchParams }: {
   const known = job && jobs.includes(job) ? job : "";
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <Toolbar title="Add a quote" description={known ? `For “${known}”.` : "For a job or a contract renewal."}
+    <div className="max-w-2xl">
+      <FinanceHeader title="Add a quote" intro={known ? `For “${known}”.` : "For a job or a contract renewal."}
         back={{ href: known ? `${base}#${jobAnchor(known)}` : base, label: "Quotes" }} />
       <QuoteForm slug={s.community.slug} jobs={jobs} job={known} suppliers={suppliers ?? []} cancelHref={base} />
     </div>

@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { date, money, todayInput } from "@/lib/format";
 import { Badge, Button, Card, Notice, SectionHeader, Stat, TabLinks } from "@/components/ui";
 import DataTable, { type Column } from "@/components/DataTable";
-import { Toolbar } from "@/components/finance-ops/Toolbar";
+import FinanceHeader from "@/components/finance/FinanceHeader";
 import { ConfirmDialog } from "@/components/finance-ops/ConfirmDialog";
 import { Flash } from "@/components/finance-ops/Flash";
 import { SubmitButton } from "@/components/finance-ops/SubmitButton";
@@ -85,9 +85,9 @@ export default async function FeesPage({ params, searchParams }: {
 
   return (
     <>
-      <Toolbar
+      <FinanceHeader
         title="Owner fees"
-        description="Fees per flat. Payments are recorded by hand; there is no online payment."
+        intro="Fees per flat. Payments are recorded by hand; there is no online payment."
         actions={<Button href={`${base}/payments/new`}><HandCoins aria-hidden className="size-4" /> Record a payment</Button>}
       />
       <TabLinks label="Owner fee sections" tabs={[
@@ -239,7 +239,8 @@ export default async function FeesPage({ params, searchParams }: {
         )}
 
         {tab === "flats" && (
-          <div className="relative overflow-x-clip">
+          // Beside the sidebar on laptops and tablets, Block and then Last reminder are left out so Status stays in view.
+          <div className="@container relative overflow-x-clip @max-[49rem]:[&_:is(th,td):nth-child(2)]:hidden @max-[44rem]:[&_:is(th,td):nth-child(6)]:hidden">
             <DataTable
               timeZone={s.community.timezone}
               rows={balances.map((b) => ({

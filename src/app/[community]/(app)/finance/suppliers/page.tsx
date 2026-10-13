@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { todayInput } from "@/lib/format";
 import { Button, Empty } from "@/components/ui";
 import DataTable, { type Column } from "@/components/DataTable";
-import FinanceToolbar from "@/components/finance/FinanceToolbar";
+import FinanceHeader from "@/components/finance/FinanceHeader";
 import ViewPills from "@/components/finance/ViewPills";
 import { fetchAll } from "@/components/finance/fetch-all";
 
@@ -66,7 +66,7 @@ export default async function SuppliersPage({ params, searchParams }: {
 
   return (
     <>
-      <FinanceToolbar title="Suppliers" meta="Companies the community pays, what they cost and how to reach them." actions={addButton} />
+      <FinanceHeader title="Suppliers" intro="Companies the community pays, what they cost and how to reach them." actions={addButton} />
       {all.length === 0 ? (
         <Empty icon={Truck} title="No suppliers yet" action={addButton}>
           Add the companies that work for the community, such as gardening, cleaning or the lift company.
@@ -79,8 +79,9 @@ export default async function SuppliersPage({ params, searchParams }: {
               { href: `${base}?view=inactive`, label: "No longer used", active: showInactive, count: inactive.length },
             ]} />
           )}
-          {/* Phone numbers stay on one line in the table. */}
-          <div className="[&_tbody_td:nth-child(2)]:whitespace-nowrap">
+          {/* Phone numbers stay on one line. Beside the sidebar on laptops and tablets, Email and then All time are left out
+              so the money columns stay in view; both are still searched and exported. */}
+          <div className="@container [&_tbody_td:nth-child(2)]:whitespace-nowrap @max-[57rem]:[&_:is(th,td):nth-child(3)]:hidden @max-[47rem]:[&_:is(th,td):nth-child(5)]:hidden">
             <DataTable
               rows={rows}
               columns={columns}

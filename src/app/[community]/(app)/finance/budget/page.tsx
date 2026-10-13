@@ -3,8 +3,9 @@ import { CheckCircle2, CopyPlus, PiggyBank, Pencil, Plus } from "lucide-react";
 import { requireFinance } from "@/lib/community";
 import { createClient } from "@/lib/supabase/server";
 import { centsToInput, date, money, todayInput } from "@/lib/format";
-import { Badge, Button, Card, Empty, Notice, Stat, StatusBadge, TabLinks, type Tone } from "@/components/ui";
-import { Toolbar } from "@/components/finance-ops/Toolbar";
+import { Badge, Button, Card, Empty, Notice, Stat, StatusBadge, TabLinks } from "@/components/ui";
+import { BudgetMeter, budgetStatus } from "@/components/finance/BudgetStatus";
+import FinanceHeader from "@/components/finance/FinanceHeader";
 import { ConfirmDialog } from "@/components/finance-ops/ConfirmDialog";
 import { Flash } from "@/components/finance-ops/Flash";
 import { SubmitButton } from "@/components/finance-ops/SubmitButton";
@@ -29,17 +30,6 @@ const ERRORS: Record<string, string> = {
 };
 
 type Row = { category_id: string; name: string; color: string; budget: number; actual: number; sort: number };
-
-/** Colour + word for how a category is doing against its budget. */
-function verdict(budget: number, actual: number, elapsed: number | null): { tone: Tone; word: string } {
-  if (actual > budget) return { tone: "bad", word: "Over budget" };
-  if (budget > 0 && actual === budget) return { tone: "warn", word: "Fully used" };
-  if (elapsed == null) return actual === 0 ? { tone: "neutral", word: "Not started" } : { tone: "ok", word: "Under budget" };
-  const used = budget > 0 ? actual / budget : 0;
-  if (used >= 0.9) return { tone: "warn", word: "Nearly used" };
-  if (used > elapsed + 0.15) return { tone: "warn", word: "Ahead of plan" };
-  return { tone: "ok", word: "On track" };
-}
 
 export default async function BudgetPage({ params, searchParams }: {
   params: Promise<{ community: string }>;
@@ -118,10 +108,10 @@ export default async function BudgetPage({ params, searchParams }: {
 
   return (
     <>
-      <Toolbar
+      <FinanceHeader
         title={`Budget ${year}`}
         badge={budget ? <StatusBadge value={budget.status} /> : undefined}
-        description={!budget ? undefined
+        intro={!budget ? undefined
           : budget.status === "approved"
             ? `Approved at the AGM${budget.approved_at ? ` on ${date(budget.approved_at)}` : ""}.`
             : "Draft. Adjust the amounts, then mark it approved after the AGM vote."}
@@ -209,8 +199,7 @@ export default async function BudgetPage({ params, searchParams }: {
                 </div>
                 <ul className="divide-y divide-line">
                   {rows.map((r) => {
-                    const v = verdict(r.budget, r.actual, elapsed);
-                    const pct = r.budget > 0 ? Math.min(100, (r.actual / r.budget) * 100) : r.actual > 0 ? 100 : 0;
+                    const v = budgetStatus(r.budget, r.actual);
                     const diff = r.budget - r.actual;
                     return (
                       <li key={r.category_id} className="grid gap-x-4 gap-y-2 px-5 py-4 sm:px-6 md:grid-cols-[minmax(0,1fr)_7.5rem_7.5rem_8.5rem] md:items-center">
@@ -221,13 +210,8 @@ export default async function BudgetPage({ params, searchParams }: {
                             </span>
                             <Badge tone={v.tone}>{v.word}</Badge>
                           </div>
-                          <div className="relative mt-2 h-2 rounded-full bg-surface-2 ring-1 ring-inset ring-line"
-                            role="img" aria-label={`${r.name}: ${Math.round(r.budget > 0 ? (r.actual / r.budget) * 100 : 0)}% of the budget spent`}>
-                            <div className={clsx("h-full rounded-full", v.tone === "bad" ? "bg-bad" : v.tone === "warn" ? "bg-warn" : "bg-brand")} style={{ width: `${pct}%` }} />
-                            {elapsed != null && (
-                              <span aria-hidden title="Today" className="absolute -top-1 h-4 w-0.5 rounded-full bg-ink/50" style={{ left: `${elapsed * 100}%` }} />
-                            )}
-                          </div>
+                          <BudgetMeter className="mt-2" budget={r.budget} actual={r.actual} marker={elapsed}
+                            label={`${r.name}: ${Math.round(r.budget > 0 ? (r.actual / r.budget) * 100 : 0)}% of the budget spent. ${v.word}.`} />
                         </div>
                         {/* Phone: one line, "€10,285.00 of €12,500.00 · €2,215.00 left" */}
                         <p className="flex flex-wrap items-baseline justify-between gap-x-3 text-[0.9375rem] md:hidden">
@@ -253,23 +237,26 @@ export default async function BudgetPage({ params, searchParams }: {
                       </li>
                     );
                   })}
-                  {unbudgeted.map(([name, v]) => (
-                    <li key={name} className="grid gap-x-4 gap-y-2 px-5 py-4 sm:px-6 md:grid-cols-[minmax(0,1fr)_7.5rem_7.5rem_8.5rem] md:items-center">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="flex items-center gap-2.5 font-medium">
-                          <span aria-hidden className="size-2.5 shrink-0 rounded-full" style={{ background: v.color }} />{name}
-                        </span>
-                        <Badge tone="warn">Not in the budget</Badge>
-                      </div>
-                      <p className="flex flex-wrap items-baseline justify-between gap-x-3 text-[0.9375rem] md:hidden">
-                        <span className="tabular text-ink-2">{money(v.total, cur)} <span className="text-muted">spent</span></span>
-                        <span className="tabular text-bad">{money(v.total, cur)} over</span>
-                      </p>
-                      <div className="hidden text-right text-[0.9375rem] md:block"><span className="sr-only">Budget</span><span className="tabular">{money(0, cur)}</span></div>
-                      <div className="hidden text-right text-[0.9375rem] md:block"><span className="sr-only">Spent</span><span className="tabular">{money(v.total, cur)}</span></div>
-                      <div className="hidden text-right text-[0.9375rem] md:block"><span className="sr-only">Difference</span><span className="tabular text-bad">{money(v.total, cur)} over</span></div>
-                    </li>
-                  ))}
+                  {unbudgeted.map(([name, v]) => {
+                    const st = budgetStatus(0, v.total);
+                    return (
+                      <li key={name} className="grid gap-x-4 gap-y-2 px-5 py-4 sm:px-6 md:grid-cols-[minmax(0,1fr)_7.5rem_7.5rem_8.5rem] md:items-center">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="flex items-center gap-2.5 font-medium">
+                            <span aria-hidden className="size-2.5 shrink-0 rounded-full" style={{ background: v.color }} />{name}
+                          </span>
+                          <Badge tone={st.tone}>{st.word}</Badge>
+                        </div>
+                        <p className="flex flex-wrap items-baseline justify-between gap-x-3 text-[0.9375rem] md:hidden">
+                          <span className="tabular text-ink-2">{money(v.total, cur)} <span className="text-muted">spent</span></span>
+                          <span className="tabular text-bad">{money(v.total, cur)} over</span>
+                        </p>
+                        <div className="hidden text-right text-[0.9375rem] md:block"><span className="sr-only">Budget</span><span className="tabular">{money(0, cur)}</span></div>
+                        <div className="hidden text-right text-[0.9375rem] md:block"><span className="sr-only">Spent</span><span className="tabular">{money(v.total, cur)}</span></div>
+                        <div className="hidden text-right text-[0.9375rem] md:block"><span className="sr-only">Difference</span><span className="tabular text-bad">{money(v.total, cur)} over</span></div>
+                      </li>
+                    );
+                  })}
                   <li className="grid gap-x-4 gap-y-1 bg-surface-2 px-5 py-3 font-medium sm:px-6 md:grid-cols-[minmax(0,1fr)_7.5rem_7.5rem_8.5rem]">
                     <span>Total</span>
                     <p className="flex flex-wrap items-baseline justify-between gap-x-3 text-[0.9375rem] md:hidden">
@@ -288,7 +275,7 @@ export default async function BudgetPage({ params, searchParams }: {
             )}
             {elapsed != null && rows.length > 0 && (
               <p className="flex items-center gap-2 text-sm text-muted">
-                <span aria-hidden className="inline-block h-3.5 w-0.5 rounded-full bg-ink/50" /> The thin line on each bar shows how much of the year has passed.
+                <span aria-hidden className="inline-block h-3.5 w-0.5 rounded-full bg-ink/40" /> The thin line on each bar shows how much of the year has passed.
               </p>
             )}
           </>

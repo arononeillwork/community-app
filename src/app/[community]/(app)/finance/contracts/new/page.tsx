@@ -1,7 +1,7 @@
 import { requireFinance } from "@/lib/community";
 import { createClient } from "@/lib/supabase/server";
 import { centsToInput, date, money, todayInput } from "@/lib/format";
-import { Toolbar } from "@/components/finance-ops/Toolbar";
+import FinanceHeader from "@/components/finance/FinanceHeader";
 import { addDays, addMonths, monthsBetween } from "@/components/finance-ops/dates";
 import ContractForm, { type ContractInitial } from "../ContractForm";
 
@@ -73,8 +73,8 @@ export default async function NewContractPage({ params, searchParams }: {
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <Toolbar title={title} description={description} back={back} />
+    <div className="max-w-3xl">
+      <FinanceHeader title={title} intro={description} back={back} />
       <ContractForm
         slug={s.community.slug}
         contractId={null}

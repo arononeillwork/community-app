@@ -158,15 +158,23 @@ export default async function HomePage({ params }: { params: Promise<{ community
             <span className="text-[2rem] font-semibold leading-none tabular">{open.length}</span>
             <span className="text-[0.9375rem] text-muted">{open.length === 1 ? "open report" : "open reports"}</span>
           </div>
-          {urgent > 0 && <div className="mt-2"><Badge tone="bad">{urgent} high priority</Badge></div>}
+          {urgent > 0 && (
+            <div className="mt-2">
+              {s.isAdmin ? (
+                <Link href={`${base}/report?f_state=Open&f_urgency=Yes`} className="no-underline hover:underline">
+                  <Badge tone="bad">{urgent} urgent or high</Badge>
+                </Link>
+              ) : <Badge tone="bad">{urgent} urgent or high</Badge>}
+            </div>
+          )}
           {flatReports > 0 && (
             <Link href={`${base}/report?f_who=${encodeURIComponent("About your flat")}`} className="mt-2 text-[0.9375rem] font-medium no-underline hover:underline">
               {flatReports} about your flat
             </Link>
           )}
           {!s.isAdmin && open.length === 0 && !flatReports && <p className="mt-2 text-[0.9375rem] text-muted">Nothing waiting. Something broken? Let the office know.</p>}
-          <Link href={`${base}/report`} className="mt-auto inline-flex items-center gap-1 pt-4 text-sm font-medium no-underline hover:underline">
-            {s.isAdmin ? "Review reports" : "See your reports"} <ArrowRight aria-hidden className="size-3.5" />
+          <Link href={s.isAdmin ? `${base}/report?f_state=Open` : `${base}/report`} className="mt-auto inline-flex items-center gap-1 pt-4 text-sm font-medium no-underline hover:underline">
+            {s.isAdmin ? "Review open reports" : "See your reports"} <ArrowRight aria-hidden className="size-3.5" />
           </Link>
         </Card>
       </div>

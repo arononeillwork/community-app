@@ -1,7 +1,7 @@
 import { requireFinance } from "@/lib/community";
 import { createClient } from "@/lib/supabase/server";
 import { todayInput } from "@/lib/format";
-import { Toolbar } from "@/components/finance-ops/Toolbar";
+import FinanceHeader from "@/components/finance/FinanceHeader";
 import ScheduleForm from "./ScheduleForm";
 
 export const metadata = { title: "Fee schedule" };
@@ -35,8 +35,8 @@ export default async function NewSchedulePage({ params, searchParams }: {
   const prev = schedules?.[0] ?? null;
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <Toolbar title="New fee schedule" description="How much owners pay in a year and how often." back={{ href: base, label: "Owner fees" }} />
+    <div className="max-w-2xl">
+      <FinanceHeader title="New fee schedule" intro="How much owners pay in a year and how often." back={{ href: base, label: "Owner fees" }} />
       <ScheduleForm slug={s.community.slug} year={year} budgets={budgets} flats={count ?? 0}
         previous={prev ? { frequency: prev.frequency, method: prev.method } : null} cancelHref={base} />
     </div>

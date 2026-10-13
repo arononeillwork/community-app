@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { requireFinance } from "@/lib/community";
 import { createClient } from "@/lib/supabase/server";
 import { centsToInput } from "@/lib/format";
-import FinanceToolbar from "@/components/finance/FinanceToolbar";
+import FinanceHeader from "@/components/finance/FinanceHeader";
 import { attachmentName, guessVatRate } from "@/components/finance/invoice";
 import InvoiceForm from "../../InvoiceForm";
 import { updateInvoice } from "../../actions";
@@ -33,8 +33,8 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ co
   ]);
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <FinanceToolbar title={`Edit invoice ${inv.invoice_number}`} meta="Only possible while it is waiting for approval."
+    <div className="max-w-3xl">
+      <FinanceHeader title={`Edit invoice ${inv.invoice_number}`} intro="Only possible while it is waiting for approval."
         back={{ href: `${base}/${id}`, label: "Invoice" }} />
       <InvoiceForm
         action={updateInvoice.bind(null, s.community.slug, id)}

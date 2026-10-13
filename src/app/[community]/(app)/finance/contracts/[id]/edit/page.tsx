@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { requireFinance } from "@/lib/community";
 import { createClient } from "@/lib/supabase/server";
 import { centsToInput } from "@/lib/format";
-import { Toolbar } from "@/components/finance-ops/Toolbar";
+import FinanceHeader from "@/components/finance/FinanceHeader";
 import { displayFileName } from "@/components/finance-ops/dates";
 import ContractForm from "../../ContractForm";
 
@@ -26,8 +26,8 @@ export default async function EditContractPage({ params }: { params: Promise<{ c
   const options = (suppliers ?? []).filter((x) => x.active || x.id === k.supplier_id);
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <Toolbar title="Edit contract" back={{ href: `${base}/${k.id}`, label: k.title }} />
+    <div className="max-w-3xl">
+      <FinanceHeader title="Edit contract" back={{ href: `${base}/${k.id}`, label: k.title }} />
       <ContractForm
         slug={s.community.slug}
         contractId={k.id}

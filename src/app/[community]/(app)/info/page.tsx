@@ -9,6 +9,8 @@ import { Badge, Button, Card, Empty, IconButton, Notice, PageHeader, SectionHead
 import RichText from "@/components/library/RichText";
 import FaqList, { type Faq } from "@/components/library/FaqList";
 import HashOpener from "@/components/library/HashOpener";
+import FaqEditor from "./FaqEditor";
+import { deleteFaq, updateFaq } from "./faq-actions";
 import {
   INFO_CATEGORIES, VISIBILITY_LABELS, WEEK, infoIcon, listWords, todayAndTomorrow, weekdaysInWords, type Visibility,
 } from "@/components/library/meta";
@@ -26,6 +28,7 @@ const NOTICES: Record<string, string> = {
   "deleted:info": "Information deleted.",
   "saved:bin": "Bin days saved.",
   "deleted:bin": "Bin deleted.",
+  "deleted:faq": "Question deleted. The assistant no longer uses it.",
 };
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -93,7 +96,14 @@ export default async function InfoPage({ params, searchParams }: {
         ) : (
           <BuildingInfo groups={groups} base={base} isAdmin={s.isAdmin} timeZone={s.community.timezone} />
         )}
-          <FaqList items={(faqRows ?? []) as Faq[]} />
+          <FaqList items={(faqRows ?? []) as Faq[]}
+            description={s.isAdmin ? "The assistant answers from these. Open one to edit or delete it." : undefined}
+            renderAnswer={s.isAdmin ? (f, answer) => (
+              <FaqEditor question={f.question} answer={f.answer}
+                update={updateFaq.bind(null, s.community.slug, f.id)} remove={deleteFaq.bind(null, s.community.slug, f.id)}>
+                {answer}
+              </FaqEditor>
+            ) : undefined} />
         </div>
       </div>
       <HashOpener />
@@ -212,10 +222,13 @@ function BuildingInfo({ groups, base, isAdmin, timeZone }: {
                     <span className={clsx("grid size-9 shrink-0 place-items-center rounded-xl", urgent ? "bg-bad-soft text-bad" : "bg-brand-soft text-brand-text")}>
                       <Icon aria-hidden className="size-[1.15rem]" />
                     </span>
-                    <span className="min-w-0 flex-1 font-medium leading-snug text-ink">{p.title}</span>
-                    {p.visibility !== "all" && (
-                      <Badge tone={p.visibility === "admins" ? "warn" : "neutral"} dot={false}>{VISIBILITY_LABELS[p.visibility]}</Badge>
-                    )}
+                    {/* Title and "Owners only" wrap onto two lines with large text instead of pushing the page sideways. */}
+                    <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="min-w-0 font-medium leading-snug text-ink">{p.title}</span>
+                      {p.visibility !== "all" && (
+                        <Badge tone={p.visibility === "admins" ? "warn" : "neutral"} dot={false}>{VISIBILITY_LABELS[p.visibility]}</Badge>
+                      )}
+                    </span>
                     <ChevronDown aria-hidden className="size-4 shrink-0 text-muted transition-transform group-open:rotate-180" />
                   </summary>
                   <div className="px-5 pb-5 pt-1 sm:pl-[4.5rem] sm:pr-6">

@@ -5,7 +5,7 @@ import { requireFinance } from "@/lib/community";
 import { createClient } from "@/lib/supabase/server";
 import { date, money, todayInput } from "@/lib/format";
 import { Avatar, Badge, Button, Card, DefinitionList, Notice, SectionHeader, StatusBadge } from "@/components/ui";
-import FinanceToolbar from "@/components/finance/FinanceToolbar";
+import FinanceHeader from "@/components/finance/FinanceHeader";
 import { attachmentName, guessVatRate, requiredApprovals } from "@/components/finance/invoice";
 import { type AuditRow, shortDateTime, summarise } from "@/components/finance/audit";
 import { loadLookups } from "@/components/finance/lookups";
@@ -73,135 +73,137 @@ export default async function InvoicePage({ params, searchParams }: {
   const threshold = money(s.community.settings?.invoice_approval_threshold_cents ?? 100000, cur);
 
   return (
-    <div className="flex flex-col gap-5">
-      <FinanceToolbar
+    <>
+      <FinanceHeader
         back={{ href: `${base}/invoices`, label: "Invoices" }}
-        title={<>Invoice {inv.invoice_number} <StatusBadge value={inv.status} />{overdue && <Badge tone="bad">Overdue</Badge>}</>}
-        meta={<><Link href={`${base}/suppliers/${inv.supplier.id}`} className="font-medium">{inv.supplier.name}</Link> · {inv.supplier.service_type}</>}
+        title={`Invoice ${inv.invoice_number}`}
+        badge={<><StatusBadge value={inv.status} />{overdue && <Badge tone="bad">Overdue</Badge>}</>}
+        intro={<><Link href={`${base}/suppliers/${inv.supplier.id}`} className="font-medium">{inv.supplier.name}</Link> · {inv.supplier.service_type}</>}
         actions={inv.status === "received" ? (
           <Button href={`${base}/invoices/${id}/edit`} variant="secondary"><Pencil aria-hidden className="size-4" /> Edit details</Button>
         ) : undefined}
       />
+      <div className="flex flex-col gap-5">
+        {savedNote && <Notice tone="ok" title={savedNote.title}>{savedNote.text}</Notice>}
+        {inv.status === "disputed" && (
+          <Notice tone="bad" title="Disputed">{inv.dispute_reason || "No reason was recorded."}</Notice>
+        )}
 
-      {savedNote && <Notice tone="ok" title={savedNote.title}>{savedNote.text}</Notice>}
-      {inv.status === "disputed" && (
-        <Notice tone="bad" title="Disputed">{inv.dispute_reason || "No reason was recorded."}</Notice>
-      )}
-
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <Card className="flex flex-col gap-5 lg:col-span-2">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <div className="text-sm font-medium text-muted">{inv.status === "paid" ? "Total paid" : inv.status === "disputed" ? "Total invoiced" : "Total to pay"}</div>
-              <div className="mt-1 text-[1.75rem] font-semibold leading-none tracking-tight">{money(total, cur)}</div>
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+          <Card className="flex flex-col gap-5 lg:col-span-2">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <div className="text-sm font-medium text-muted">{inv.status === "paid" ? "Total paid" : inv.status === "disputed" ? "Total invoiced" : "Total to pay"}</div>
+                <div className="mt-1 text-[1.75rem] font-semibold leading-none tracking-tight">{money(total, cur)}</div>
+              </div>
+              {inv.status === "paid" ? (
+                <Badge tone="ok">Paid {date(inv.paid_date)}</Badge>
+              ) : inv.due_date ? (
+                <Badge tone={overdue ? "bad" : "neutral"}>{overdue ? `${daysLate} ${daysLate === 1 ? "day" : "days"} late` : `Due ${date(inv.due_date)}`}</Badge>
+              ) : null}
             </div>
-            {inv.status === "paid" ? (
-              <Badge tone="ok">Paid {date(inv.paid_date)}</Badge>
-            ) : inv.due_date ? (
-              <Badge tone={overdue ? "bad" : "neutral"}>{overdue ? `${daysLate} ${daysLate === 1 ? "day" : "days"} late` : `Due ${date(inv.due_date)}`}</Badge>
-            ) : null}
-          </div>
-          <DefinitionList items={[
-            { label: "Net amount", value: <span className="tabular">{money(inv.net_cents, cur)}</span> },
-            { label: `VAT (${rate}%)`, value: <span className="tabular">{money(inv.vat_cents, cur)}</span> },
-            { label: "Invoice date", value: date(inv.issue_date) },
-            { label: "Due date", value: inv.due_date ? date(inv.due_date) : "No due date" },
-            ...(inv.paid_date ? [{ label: "Paid on", value: date(inv.paid_date) }] : []),
-            { label: "Category", value: inv.category?.name ?? "Uncategorised" },
-            { label: "Contract", value: inv.contract ? <Link href={`${base}/contracts/${inv.contract.id}`}>{inv.contract.title}</Link> : "Not under a contract" },
-            ...(inv.notes ? [{ label: "Description", value: <span className="whitespace-pre-line">{inv.notes}</span> }] : []),
-            { label: "Added by", value: <>{personName(lookups.people, inv.created_by)} <span className="text-muted">· {dayOf(inv.created_at, tz)}</span></> },
-          ]} />
+            <DefinitionList items={[
+              { label: "Net amount", value: <span className="tabular">{money(inv.net_cents, cur)}</span> },
+              { label: `VAT (${rate}%)`, value: <span className="tabular">{money(inv.vat_cents, cur)}</span> },
+              { label: "Invoice date", value: date(inv.issue_date) },
+              { label: "Due date", value: inv.due_date ? date(inv.due_date) : "No due date" },
+              ...(inv.paid_date ? [{ label: "Paid on", value: date(inv.paid_date) }] : []),
+              { label: "Category", value: inv.category?.name ?? "Uncategorised" },
+              { label: "Contract", value: inv.contract ? <Link href={`${base}/contracts/${inv.contract.id}`}>{inv.contract.title}</Link> : "Not under a contract" },
+              ...(inv.notes ? [{ label: "Description", value: <span className="whitespace-pre-line">{inv.notes}</span> }] : []),
+              { label: "Added by", value: <>{personName(lookups.people, inv.created_by)} <span className="text-muted">· {dayOf(inv.created_at, tz)}</span></> },
+            ]} />
 
-          <div>
-            <h3 className="mb-2 text-[0.9375rem] font-medium text-muted">Invoice file</h3>
-            {inv.file_path && signed?.signedUrl ? (
-              <a href={signed.signedUrl} target="_blank" rel="noopener noreferrer"
-                className="group flex items-center gap-3 rounded-xl border border-line px-4 py-3 text-ink no-underline transition-colors hover:border-brand-line hover:bg-surface-2">
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand-text"><FileText aria-hidden className="size-5" /></span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium group-hover:underline">{attachmentName(inv.file_path)}</span>
-                  <span className="block text-sm text-muted">Opens in a new tab</span>
-                </span>
-                <ExternalLink aria-hidden className="size-4 shrink-0 text-muted" />
-              </a>
-            ) : inv.file_path ? (
-              <p className="text-[0.9375rem] text-muted">The file could not be opened. Try again in a moment.</p>
+            <div>
+              <h2 className="mb-2 text-[0.9375rem] font-medium text-muted">Invoice file</h2>
+              {inv.file_path && signed?.signedUrl ? (
+                <a href={signed.signedUrl} target="_blank" rel="noopener noreferrer"
+                  className="group flex items-center gap-3 rounded-xl border border-line px-4 py-3 text-ink no-underline transition-colors hover:border-brand-line hover:bg-surface-2">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand-text"><FileText aria-hidden className="size-5" /></span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium group-hover:underline">{attachmentName(inv.file_path)}</span>
+                    <span className="block text-sm text-muted">Opens in a new tab</span>
+                  </span>
+                  <ExternalLink aria-hidden className="size-4 shrink-0 text-muted" />
+                </a>
+              ) : inv.file_path ? (
+                <p className="text-[0.9375rem] text-muted">The file could not be opened. Try again in a moment.</p>
+              ) : (
+                <p className="text-[0.9375rem] text-muted">
+                  No file attached.{inv.status === "received" && <> <Link href={`${base}/invoices/${id}/edit`}>Attach the invoice</Link> so others can check it.</>}
+                </p>
+              )}
+            </div>
+          </Card>
+
+          {/* On phones the approval actions come first, so nobody has to scroll past the details to approve. */}
+          <Card className={`flex flex-col gap-4 self-start ${inv.status === "paid" ? "" : "order-first lg:order-none"}`}>
+            <SectionHeader icon={BadgeCheck} title="Approvals" className="!mb-0"
+              description={<>{Math.min(given.length, need)} of {need} {need === 1 ? "approval" : "approvals"}<span className="lg:hidden"> · {money(total, cur)}</span></>} />
+            <div className="flex gap-1.5" aria-hidden>
+              {Array.from({ length: need }, (_, i) => (
+                <span key={i} className={`h-1.5 flex-1 rounded-full ${i < given.length ? "bg-ok" : "bg-surface-2 ring-1 ring-inset ring-line"}`} />
+              ))}
+            </div>
+            {given.length > 0 ? (
+              <ul className="flex flex-col gap-3">
+                {given.map((a) => {
+                  const name = personName(lookups.people, a.approver_id);
+                  return (
+                    <li key={a.approver_id} className="flex items-center gap-3">
+                      <Avatar name={name} size="sm" />
+                      <div className="min-w-0">
+                        <div className="truncate font-medium">{name}{a.approver_id === s.userId && <span className="font-normal text-muted"> (you)</span>}</div>
+                        <div className="text-sm text-muted">{dayOf(a.approved_at, tz)}</div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
             ) : (
-              <p className="text-[0.9375rem] text-muted">
-                No file attached.{inv.status === "received" && <> <Link href={`${base}/invoices/${id}/edit`}>Attach the invoice</Link> so others can check it.</>}
-              </p>
+              <p className="text-[0.9375rem] text-muted">No approvals yet.</p>
             )}
-          </div>
-        </Card>
+            <p className="hint">{need === 2 ? `Invoices over ${threshold} need two different people to approve.` : `Invoices up to ${threshold} need one approval.`}</p>
 
-        {/* On phones the approval actions come first, so nobody has to scroll past the details to approve. */}
-        <Card className={`flex flex-col gap-4 self-start ${inv.status === "paid" ? "" : "order-first lg:order-none"}`}>
-          <SectionHeader icon={BadgeCheck} title="Approvals" className="!mb-0"
-            description={<>{Math.min(given.length, need)} of {need} {need === 1 ? "approval" : "approvals"}<span className="lg:hidden"> · {money(total, cur)}</span></>} />
-          <div className="flex gap-1.5" aria-hidden>
-            {Array.from({ length: need }, (_, i) => (
-              <span key={i} className={`h-1.5 flex-1 rounded-full ${i < given.length ? "bg-ok" : "bg-surface-2 ring-1 ring-inset ring-line"}`} />
-            ))}
-          </div>
-          {given.length > 0 ? (
-            <ul className="flex flex-col gap-3">
-              {given.map((a) => {
-                const name = personName(lookups.people, a.approver_id);
+            <InvoiceActions
+              status={inv.status}
+              canApprove={!mine}
+              approveNote={mine ? "You have approved this invoice. It now needs someone else's approval." : null}
+              today={today}
+              approve={approveInvoice.bind(null, s.community.slug, id)}
+              pay={markInvoicePaid.bind(null, s.community.slug, id)}
+              dispute={disputeInvoice.bind(null, s.community.slug, id)}
+              reopen={reopenInvoice.bind(null, s.community.slug, id)}
+            />
+          </Card>
+        </div>
+
+        <Card>
+          <SectionHeader icon={History} title="History" description="Every change to this invoice, newest first" />
+          {history.length ? (
+            <ol className="relative ml-4 flex flex-col gap-4 border-l border-line pl-8">
+              {history.map((h) => {
+                const who = personName(lookups.people, h.actor);
                 return (
-                  <li key={a.approver_id} className="flex items-center gap-3">
-                    <Avatar name={name} size="sm" />
-                    <div className="min-w-0">
-                      <div className="truncate font-medium">{name}{a.approver_id === s.userId && <span className="font-normal text-muted"> (you)</span>}</div>
-                      <div className="text-sm text-muted">{dayOf(a.approved_at, tz)}</div>
+                  <li key={h.id} className="relative">
+                    <span className="absolute -left-12 top-0"><Avatar name={who} size="sm" className="ring-4 ring-surface" /></span>
+                    <div className="text-[0.9375rem] text-ink">
+                      {summarise(h, lookups, cur)}
+                      {h.table_name === "invoices" && h.new_data?.status === "disputed" && h.old_data?.status !== "disputed" && h.new_data?.dispute_reason
+                        ? <span className="text-muted">: {String(h.new_data.dispute_reason)}</span> : null}
+                    </div>
+                    <div className="text-sm text-muted">
+                      {who} · {shortDateTime(h.at, tz)} · <Link href={`${base}/audit/${h.id}`} className="font-medium">Details</Link>
                     </div>
                   </li>
                 );
               })}
-            </ul>
+            </ol>
           ) : (
-            <p className="text-[0.9375rem] text-muted">No approvals yet.</p>
+            <p className="flex items-center gap-2 text-[0.9375rem] text-muted"><Receipt aria-hidden className="size-4" /> No changes recorded yet.</p>
           )}
-          <p className="hint">{need === 2 ? `Invoices over ${threshold} need two different people to approve.` : `Invoices up to ${threshold} need one approval.`}</p>
-
-          <InvoiceActions
-            status={inv.status}
-            canApprove={!mine}
-            approveNote={mine ? "You have approved this invoice. It now needs someone else's approval." : null}
-            today={today}
-            approve={approveInvoice.bind(null, s.community.slug, id)}
-            pay={markInvoicePaid.bind(null, s.community.slug, id)}
-            dispute={disputeInvoice.bind(null, s.community.slug, id)}
-            reopen={reopenInvoice.bind(null, s.community.slug, id)}
-          />
         </Card>
       </div>
-
-      <Card>
-        <SectionHeader icon={History} title="History" description="Every change to this invoice, newest first" />
-        {history.length ? (
-          <ol className="relative ml-4 flex flex-col gap-4 border-l border-line pl-8">
-            {history.map((h) => {
-              const who = personName(lookups.people, h.actor);
-              return (
-                <li key={h.id} className="relative">
-                  <span className="absolute -left-12 top-0"><Avatar name={who} size="sm" className="ring-4 ring-surface" /></span>
-                  <div className="text-[0.9375rem] text-ink">
-                    {summarise(h, lookups, cur)}
-                    {h.table_name === "invoices" && h.new_data?.status === "disputed" && h.old_data?.status !== "disputed" && h.new_data?.dispute_reason
-                      ? <span className="text-muted">: {String(h.new_data.dispute_reason)}</span> : null}
-                  </div>
-                  <div className="text-sm text-muted">
-                    {who} · {shortDateTime(h.at, tz)} · <Link href={`${base}/audit/${h.id}`} className="font-medium">Details</Link>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        ) : (
-          <p className="flex items-center gap-2 text-[0.9375rem] text-muted"><Receipt aria-hidden className="size-4" /> No changes recorded yet.</p>
-        )}
-      </Card>
-    </div>
+    </>
   );
 }

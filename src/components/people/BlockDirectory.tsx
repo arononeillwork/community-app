@@ -16,10 +16,12 @@ type Props = {
   badges: Record<string, string[]>;
   /** Link prefix for a flat page; the unit id is appended. */
   flatHref: string;
+  /** Show the in-block search. Off when the page already has a search across every block. */
+  search?: boolean;
 };
 
 /** One block, floor by floor (top floor first, like the building), with a name / flat search. */
-export default function BlockDirectory({ blockName, units, people, badges, flatHref }: Props) {
+export default function BlockDirectory({ blockName, units, people, badges, flatHref, search = true }: Props) {
   const [q, setQ] = useState("");
   const inputId = useId();
 
@@ -57,14 +59,14 @@ export default function BlockDirectory({ blockName, units, people, badges, flatH
             {units.length} {units.length === 1 ? "flat" : "flats"} · {peopleCount} {peopleCount === 1 ? "person" : "people"}
           </p>
         </div>
-        <div className="field w-full sm:max-w-xs">
+        {search && <div className="field w-full sm:max-w-xs">
           <label htmlFor={inputId} className="!text-sm !text-muted">Find a name or flat</label>
           <div className="relative">
             <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-[1.1rem] -translate-y-1/2 text-muted" />
             <input id={inputId} type="search" value={q} onChange={(e) => setQ(e.target.value)}
               placeholder="Name or flat, e.g. 3B" className="input pl-10" autoComplete="off" />
           </div>
-        </div>
+        </div>}
       </div>
 
       {/* Always mounted, so screen readers announce the count as it changes. */}

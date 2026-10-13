@@ -3,6 +3,8 @@ import { requireMember } from "@/lib/community";
 import { createClient } from "@/lib/supabase/server";
 import { dateTime, humanize } from "@/lib/format";
 import { Avatar, Button, Card, DefinitionList, Notice, PageHeader, SectionHeader, StatusBadge } from "@/components/ui";
+import { ContactActions } from "@/components/contact";
+import { METHOD_LABELS, whatsappFor, type ContactMethod } from "@/components/people/types";
 import { Home, Lock, MessageSquare } from "lucide-react";
 import Link from "next/link";
 import OwnerNoteForm from "./OwnerNoteForm";
@@ -23,7 +25,7 @@ export default async function ReportDetail({ params, searchParams }: {
 
   const { data: r } = await supabase
     .from("complaints")
-    .select("*, category:complaint_categories(name), unit:units!complaints_target_unit_id_fkey(label), supplier:suppliers(name), reporter:profiles!complaints_reporter_id_fkey(full_name)")
+    .select("*, category:complaint_categories(name), unit:units!complaints_target_unit_id_fkey(label), supplier:suppliers(name), reporter:profiles!complaints_reporter_id_fkey(full_name, email, phone)")
     .eq("id", id).maybeSingle();
   if (!r) return <OwnerView slug={s.community.slug} communityId={s.community.id} id={id} timeZone={s.community.timezone} noted={!!noted} />;
   const { data: updates } = await supabase
@@ -36,6 +38,9 @@ export default async function ReportDetail({ params, searchParams }: {
   const tz = s.community.timezone;
 
   const about = r.unit?.label ? `Flat ${r.unit.label}` : r.supplier?.name ?? r.location ?? humanize(r.target_type);
+  const reporter = s.isAdmin && r.reporter && r.reporter_id !== s.userId
+    ? await reporterContact(supabase, s.community.id, r.reporter_id, r.reporter as { full_name: string; email: string | null; phone: string | null })
+    : null;
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-5">
@@ -62,7 +67,19 @@ export default async function ReportDetail({ params, searchParams }: {
         <DefinitionList items={[
           { label: "Category", value: r.category?.name ?? "Other" },
           { label: "About", value: about },
-          { label: "Reported", value: <>{dateTime(r.created_at, tz)}{s.isAdmin && r.reporter ? <span className="text-muted"> · by {r.reporter.full_name}</span> : null}</> },
+          { label: "Reported", value: <>{dateTime(r.created_at, tz)}{s.isAdmin && r.reporter_id === s.userId ? <span className="text-muted"> · by you</span> : null}</> },
+          ...(reporter ? [{
+            label: "Reported by",
+            value: (
+              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                <div className="min-w-0">
+                  <Link href={`/${s.community.slug}/admin/people/${r.reporter_id}`} className="font-medium no-underline hover:underline">{reporter.name}</Link>
+                  {reporter.meta && <div className="text-sm text-muted">{reporter.meta}</div>}
+                </div>
+                <ContactActions name={reporter.name} phone={reporter.phone} whatsapp={reporter.whatsapp} email={reporter.email} />
+              </div>
+            ),
+          }] : []),
           ...(r.resolved_at ? [{ label: "Resolved", value: dateTime(r.resolved_at, tz) }] : []),
         ]} />
         {photos.length > 0 && (
@@ -82,7 +99,9 @@ export default async function ReportDetail({ params, searchParams }: {
       </Card>
 
       <Card>
-        <SectionHeader icon={MessageSquare} title="Updates" description={(updates ?? []).length === 0 ? "No replies yet. The office will update you here." : undefined} />
+        <SectionHeader icon={MessageSquare} title="Updates" description={(updates ?? []).length === 0
+          ? s.isAdmin ? "No replies yet. When you reply, the resident gets a notification." : "No replies yet. The office will update you here."
+          : undefined} />
         {(updates ?? []).length > 0 && (
           <ol className="relative mb-2 flex flex-col gap-4 border-l border-line pl-6">
             {updates!.map((u) => {
@@ -121,6 +140,34 @@ export default async function ReportDetail({ params, searchParams }: {
       </Card>
     </div>
   );
+}
+
+/** For the office: how to reach the person who made a report, the flat(s) they live in and how they like to be contacted. */
+async function reporterContact(
+  supabase: Awaited<ReturnType<typeof createClient>>, c: string, id: string,
+  p: { full_name: string; email: string | null; phone: string | null },
+) {
+  const [{ data: pref }, { data: owned }, { data: rented }] = await Promise.all([
+    supabase.from("contact_preferences").select("preferred_method, best_times").eq("community_id", c).eq("profile_id", id).maybeSingle(),
+    supabase.from("unit_ownerships").select("unit:units(label)").eq("community_id", c).eq("owner_id", id)
+      .or(`end_date.is.null,end_date.gte.${new Date().toISOString().slice(0, 10)}`),
+    supabase.from("tenancies").select("unit:units(label)").eq("community_id", c).eq("tenant_id", id).eq("status", "active"),
+  ]);
+  const labels = [...new Set([...(owned ?? []), ...(rented ?? [])]
+    .map((x) => (x.unit as unknown as { label: string } | null)?.label).filter((l): l is string => !!l))]
+    .sort((a, b) => a.localeCompare(b, "en", { numeric: true }));
+  const method = (pref?.preferred_method ?? null) as ContactMethod | null;
+  return {
+    name: p.full_name || "Resident",
+    phone: p.phone,
+    email: p.email,
+    whatsapp: whatsappFor({ preferred_method: method, phone: p.phone }),
+    meta: [
+      labels.length ? `${labels.length === 1 ? "Flat" : "Flats"} ${labels.join(", ")}` : null,
+      method ? METHOD_LABELS[method] : null,
+      pref?.best_times ?? null,
+    ].filter(Boolean).join(" · "),
+  };
 }
 
 type FlatReport = {

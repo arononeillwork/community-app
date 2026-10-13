@@ -37,8 +37,13 @@ export default async function ReportsPage({ params }: { params: Promise<{ commun
     id: r.id, kind: r.kind, title: r.title, status: r.status, priority: r.priority, created_at: r.created_at,
     category: r.category ?? "Other", about: `Flat ${r.unit_label}`, who: "About your flat",
   }));
+  // Derived fields so saved views (and links from Home and Administration) can match the counts shown there.
   const rows = [...own, ...aboutMine]
-    .map((r) => ({ ...r, state: OPEN.has(r.status) ? "Open" : "Closed" }))
+    .map((r) => ({
+      ...r,
+      state: OPEN.has(r.status) ? "Open" : "Closed",
+      urgency: r.priority === "urgent" || r.priority === "high" ? "Yes" : "No",
+    }))
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
 
   const columns: Column[] = [
@@ -50,13 +55,17 @@ export default async function ReportsPage({ params }: { params: Promise<{ commun
     { key: "status", header: "Status", type: "status", filter: true },
     { key: "priority", header: "Priority", type: "status", filter: true, mobileHidden: true },
     { key: "state", header: "Open or closed", filter: true, hidden: true },
+    ...(s.isAdmin ? [{ key: "urgency", header: "Urgent or high", filter: true, hidden: true } as Column] : []),
     { key: "created_at", header: "Reported", type: "date" },
   ];
 
+  // Empty values keep "Open" from also lighting up when a narrower open view is chosen.
   const views: SavedView[] = [
-    { label: "Open", params: { f_state: "Open" } },
+    { label: "Open", params: s.isAdmin ? { f_state: "Open", f_kind: "", f_urgency: "" } : { f_state: "Open" } },
     ...(s.isAdmin ? [
-      { label: "Urgent", params: { f_state: "Open", f_priority: "urgent" } },
+      // Same set as the red number next to Reports in the menu.
+      { label: "New", params: { f_status: "new" } },
+      { label: "Urgent or high", params: { f_state: "Open", f_urgency: "Yes" } },
       { label: "Incidents", params: { f_state: "Open", f_kind: "incident" } },
       { label: "Complaints", params: { f_state: "Open", f_kind: "complaint" } },
     ] : []),

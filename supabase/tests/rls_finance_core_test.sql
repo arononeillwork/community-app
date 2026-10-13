@@ -29,6 +29,7 @@ select pg_temp.check((select count(*) from v_invoice_list) = 0, 'tenant cannot r
 select pg_temp.check((select count(*) from v_supplier_spend) = 0, 'tenant cannot read supplier spend');
 select pg_temp.check((select count(*) from invoice_approvals) = 0, 'tenant cannot read invoice approvals');
 select pg_temp.check((select count(*) from audit_log) = 0, 'tenant cannot read the audit log');
+select pg_temp.check((select count(*) from audit_log_actors('0cea0a00-0000-4000-8000-000000000001')) = 0, 'tenant gets no audit log people');
 select pg_temp.check((select count(*) from supplier_reports((select id from suppliers limit 1))) = 0, 'tenant gets no supplier reports');
 do $$ begin
   perform approve_invoice((select id from public.invoices limit 1));
@@ -43,6 +44,7 @@ begin;
 select pg_temp.login('owner4@oceanagardens.test');
 select pg_temp.check((select count(*) from v_invoice_list) = 0, 'owner cannot read the invoice list');
 select pg_temp.check((select count(*) from audit_log) = 0, 'owner cannot read the audit log');
+select pg_temp.check((select count(*) from audit_log_actors('0cea0a00-0000-4000-8000-000000000001')) = 0, 'owner gets no audit log people');
 select pg_temp.check((select count(*) from suppliers) = 0, 'owner cannot read suppliers (bank details)');
 select pg_temp.check((select count(*) from invoices) = 0, 'owner cannot read invoices');
 rollback;
@@ -73,6 +75,8 @@ select pg_temp.check((select count(*) from v_invoice_list where community_id = '
   'another community''s admin cannot read Oceana invoices');
 select pg_temp.check((select count(*) from audit_log where community_id = '0cea0a00-0000-4000-8000-000000000001') = 0,
   'another community''s admin cannot read the Oceana audit log');
+select pg_temp.check((select count(*) from audit_log_actors('0cea0a00-0000-4000-8000-000000000001')) = 0,
+  'another community''s admin gets no Oceana audit log people');
 select pg_temp.check((select count(*) from supplier_reports('00000000-0000-0000-0000-000000000000')) = 0, 'unknown supplier returns nothing');
 rollback;
 
@@ -200,6 +204,8 @@ select pg_temp.check((select count(*) from audit_log) > 0, 'the audit log cannot
 insert into suppliers (community_id, name, service_type, phone) values ('0cea0a00-0000-4000-8000-000000000001', 'Test Fontanería', 'Plumbing', '+34 600 000 000');
 select pg_temp.check((select actor = auth.uid() from audit_log where table_name = 'suppliers' and new_data ->> 'name' = 'Test Fontanería'),
   'a new supplier is audited with the person who added it');
+select pg_temp.check((select count(*) from audit_log_actors('0cea0a00-0000-4000-8000-000000000001') where actor = auth.uid()) = 1,
+  'finance users see who appears in their audit log');
 rollback;
 
 -- ---------------------------------------------------------------- invoice attachments

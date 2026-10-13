@@ -1,7 +1,7 @@
 import { requireFinance } from "@/lib/community";
 import { createClient } from "@/lib/supabase/server";
 import { todayInput } from "@/lib/format";
-import FinanceToolbar from "@/components/finance/FinanceToolbar";
+import FinanceHeader from "@/components/finance/FinanceHeader";
 import InvoiceForm from "../InvoiceForm";
 import { createInvoice } from "../actions";
 import { loadInvoiceFormOptions } from "../options";
@@ -22,8 +22,8 @@ export default async function NewInvoicePage({ params, searchParams }: {
   const today = todayInput(s.community.timezone);
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <FinanceToolbar title="Add an invoice" meta="Enter it as printed. It is then approved before it is paid."
+    <div className="max-w-3xl">
+      <FinanceHeader title="Add an invoice" intro="Enter it as printed. It is then approved before it is paid."
         back={preselect ? { href: `${base}/suppliers/${preselect}`, label: "Supplier" } : { href: `${base}/invoices`, label: "Invoices" }} />
       <InvoiceForm
         action={createInvoice.bind(null, s.community.slug)}

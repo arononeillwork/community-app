@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { date, money, moneyShort, todayInput } from "@/lib/format";
 import { Button, Card, Empty, Notice, SectionHeader, TabLinks } from "@/components/ui";
 import DataTable, { type Column } from "@/components/DataTable";
-import { Toolbar } from "@/components/finance-ops/Toolbar";
+import FinanceHeader from "@/components/finance/FinanceHeader";
 import { KeyDatesTimeline, type TimelineContract } from "@/components/finance-ops/KeyDatesTimeline";
 import { daysBetween, frequencyLabel, lengthLabel } from "@/components/finance-ops/dates";
 
@@ -95,9 +95,9 @@ export default async function ContractsPage({ params, searchParams }: {
 
   return (
     <>
-      <Toolbar
+      <FinanceHeader
         title="Contracts"
-        description={active.length ? `${active.length} active · ${moneyShort(yearly, s.community.currency)} a year` : undefined}
+        intro={active.length ? `${active.length} active · ${moneyShort(yearly, s.community.currency)} a year` : undefined}
         actions={<Button href={`${base}/new`}><Plus aria-hidden className="size-4" /> New contract</Button>}
       />
 
@@ -119,15 +119,19 @@ export default async function ContractsPage({ params, searchParams }: {
           )}
 
           <section aria-labelledby="contract-list">
-            <h3 id="contract-list" className="sr-only">Contract list</h3>
+            <h2 id="contract-list" className="sr-only">Contract list</h2>
             <TabLinks label="Contract views" tabs={VIEWS.map((v) => ({
               href: v.key === "active" ? base : `${base}?view=${v.key}`,
               label: v.label,
               active: v.key === view,
               count: all.filter(matches[v.key]).length,
             }))} />
-            {/* overflow-x-clip keeps the table's screen-reader sort labels from widening the page */}
-            <div className="relative overflow-x-clip">
+            {/* overflow-x-clip keeps the table's screen-reader sort labels from widening the page. Beside the sidebar on
+                laptops and tablets, Renews and then Supplier are left out so the yearly cost stays in view (in "All", Status
+                stays: Supplier and then Notice by go instead); they are still searched and exported. */}
+            <div className={view === "all"
+              ? "@container relative overflow-x-clip @max-[57rem]:[&_:is(th,td):nth-child(2)]:hidden @max-[48rem]:[&_:is(th,td):nth-child(4)]:hidden"
+              : "@container relative overflow-x-clip @max-[57rem]:[&_:is(th,td):nth-child(5)]:hidden @max-[50rem]:[&_:is(th,td):nth-child(2)]:hidden"}>
             <DataTable
               rows={rows}
               columns={columns}

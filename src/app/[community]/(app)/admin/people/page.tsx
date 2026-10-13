@@ -114,7 +114,7 @@ export default async function PeoplePage({ params, searchParams }: {
                       <div className="text-sm text-muted">Added by {t.added?.full_name ?? "the landlord"}{t.note ? ` · ${t.note}` : ""}</div>
                     </div>
                   </div>
-                  <div className="flex shrink-0 gap-2 pl-[3.25rem] sm:pl-0">
+                  <div className="flex flex-wrap gap-2 pl-[3.25rem] sm:shrink-0 sm:pl-0">
                     <form action={approveTenancy.bind(null, s.community.slug, t.id)}>
                       <SubmitButton size="sm" pendingLabel="Approving…" aria-label={`Approve ${t.tenant?.full_name ?? "tenant"} for flat ${t.unit?.label}`}>Approve</SubmitButton>
                     </form>
@@ -148,7 +148,7 @@ export default async function PeoplePage({ params, searchParams }: {
                       {i.email} · {ROLE_LABELS[i.role as keyof typeof ROLE_LABELS] ?? i.role}{i.unit ? ` · flat ${i.unit.label}` : ""} · sent {date(i.created_at, s.community.timezone)}
                     </div>
                   </div>
-                  <div className="flex shrink-0 gap-2">
+                  <div className="flex flex-wrap gap-2 sm:shrink-0">
                     <form action={resendInvitation.bind(null, s.community.slug, i.id)}>
                       <SubmitButton size="sm" variant="secondary" pendingLabel="Sending…" aria-label={`Send the invitation to ${i.email} again`}>Send again</SubmitButton>
                     </form>

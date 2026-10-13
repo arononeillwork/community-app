@@ -1,7 +1,7 @@
 import { requireFinance } from "@/lib/community";
 import { createClient } from "@/lib/supabase/server";
 import { todayInput } from "@/lib/format";
-import { Toolbar } from "@/components/finance-ops/Toolbar";
+import FinanceHeader from "@/components/finance/FinanceHeader";
 import { peopleByUnit } from "@/components/finance-ops/people";
 import PaymentForm, { type FlatOption } from "./PaymentForm";
 
@@ -37,8 +37,8 @@ export default async function NewPaymentPage({ params, searchParams }: {
   const back = selected ? { href: `${base}/${selected}`, label: `Flat ${flats.find((f) => f.id === selected)?.label}` } : { href: base, label: "Owner fees" };
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <Toolbar title="Record a payment" description="Money received from an owner for community fees." back={back} />
+    <div className="max-w-2xl">
+      <FinanceHeader title="Record a payment" intro="Money received from an owner for community fees." back={back} />
       <PaymentForm slug={s.community.slug} flats={flats} unitId={selected} today={today} cancelHref={back.href} />
     </div>
   );

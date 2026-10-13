@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { todayInput } from "@/lib/format";
 import { Button, Empty } from "@/components/ui";
 import DataTable, { type Column } from "@/components/DataTable";
-import FinanceToolbar from "@/components/finance/FinanceToolbar";
+import FinanceHeader from "@/components/finance/FinanceHeader";
 import ViewPills from "@/components/finance/ViewPills";
 import { fetchAll } from "@/components/finance/fetch-all";
 import { isOverdue } from "@/components/finance/dates";
@@ -65,7 +65,7 @@ export default async function InvoicesPage({ params, searchParams }: {
 
   return (
     <>
-      <FinanceToolbar title="Invoices" meta="Supplier bills, from approval to payment." actions={addButton} />
+      <FinanceHeader title="Invoices" intro="Supplier bills, from approval to payment." actions={addButton} />
       {all.length === 0 ? (
         <Empty icon={Receipt} title="No invoices yet" action={addButton}>
           Add the first supplier invoice. It is then approved, paid, and counted against the budget.
@@ -79,8 +79,10 @@ export default async function InvoicesPage({ params, searchParams }: {
             // "All" has no count: the table footer already shows the total, and the pills then fit one row at laptop width.
             count: v.key ? all.filter((r) => v.match(r, yearStart)).length : undefined,
           }))} />
-          {/* Invoice numbers stay on one line in the table. */}
-          <div className="[&_tbody_td:first-child]:whitespace-nowrap">
+          {/* Invoice numbers stay on one line. Beside the sidebar on laptops and tablets the table drops its least useful
+              columns first (category, then the issue date) so Total and Status always show; both stay searchable and exported.
+              In the narrowest space a long status may take two lines. */}
+          <div className="@container [&_tbody_td:first-child]:whitespace-nowrap @max-[61rem]:[&_:is(th,td):nth-child(3)]:hidden @max-[52rem]:[&_:is(th,td):nth-child(4)]:hidden @max-[44rem]:[&_tbody_td:last-child_span]:whitespace-normal">
             <DataTable
               rows={rows}
               columns={columns}
